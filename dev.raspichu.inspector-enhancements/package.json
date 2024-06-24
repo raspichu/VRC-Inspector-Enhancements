@@ -1,0 +1,15 @@
+{
+    "name": "dev.raspichu.inspector-enhancements",
+    "displayName": "Pichu Inspector Enhancements",
+    "version": "0.3.2",
+    "unity": "2019.4",
+    "description": "A tool that enhances the inspector with more features and tools.",
+    "author": {
+        "name": "Pichu"
+    },
+    "vpmDependencies": {
+        "nadena.dev.modular-avatar": ">=1.9.9 <2.0.0-a",
+        "com.vrchat.avatars": ">=3.3.0 <3.7.0-a"
+    },
+    "url": "https://github.com/raspichu/VRC-Inspector-Enhancements"
+}
