@@ -54,8 +54,9 @@ Depending what you have selected, it will display different options.
 
 ### Future Additions
 
-- Support for selecting multiple SkinnedMeshRenderers to search across all of them.
+- ~~Support for selecting multiple SkinnedMeshRenderers to search across all of them.~~
 - Option to translate Japanese blend shapes for display purposes only (not applied to the mesh itself).
+- Add/modify different predefined physbones.
 
 ## License
 This project is licensed under the MIT License
