@@ -78,7 +78,7 @@ public class InspectorEnhancements : EditorWindow
         DrawTransformOperationsSection();
 
         // Physbone box
-        if (skinnedMeshRenderers.Length != selectedObjects.Length || (physBones.Length != null && physBones.Length > 0))
+        if (skinnedMeshRenderers.Length != selectedObjects.Length || (physBones != null && physBones.Length > 0))
             DrawPhysBoneOperationsSection();
 
         // Skinned mesh box
@@ -91,7 +91,6 @@ public class InspectorEnhancements : EditorWindow
     private void SetShowBox()
     {
         bool allSelectedAreSkinnedMesh = true;
-        bool allSelectedArePhysBones = true;
 
         foreach (GameObject obj in selectedObjects)
         {
