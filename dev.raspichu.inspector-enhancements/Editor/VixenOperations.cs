@@ -69,6 +69,7 @@ namespace raspichu.inspector_enhancements.editor
                 {
                     string name = $"{selectedObjects[i].name} - {toggleStateName}";
 
+                    lastSelectedObject = createdObjects.Count > 0 ? createdObjects[createdObjects.Count - 1] : lastSelectedObject;
                     GameObject newObject = createVixenFrom(name, new GameObject[] { selectedObjects[i] }, toggleOn, lastSelectedObject.transform);
 
                     createdObjects.Add(newObject);
@@ -97,7 +98,8 @@ namespace raspichu.inspector_enhancements.editor
             GameObject newObject = new GameObject(name);
             newObject.transform.SetParent(position.parent, false);
             newObject.transform.SetSiblingIndex(position.transform.GetSiblingIndex() + 1);
-
+            Undo.RegisterCreatedObjectUndo(newObject, "Create " + name);
+            
             VixenControl vixenControl = newObject.AddComponent<VixenControl>();
 
             List<Component> componentsToAdd = new List<Component>();
