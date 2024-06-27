@@ -8,7 +8,9 @@
         "raspichu.vrc_tools.component",
         "Resilience.Vixen.Runtime"
     ],
-    "includePlatforms": [],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,

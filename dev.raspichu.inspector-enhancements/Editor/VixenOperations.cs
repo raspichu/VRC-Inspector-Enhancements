@@ -1,4 +1,3 @@
-#if VIXEN_EXISTS
 using UnityEditor;
 using UnityEngine;
 using Resilience.Vixen.Components;
@@ -10,6 +9,7 @@ namespace raspichu.inspector_enhancements.editor
     {
 
         private bool showVixenOperations = false;
+        private bool forEach = false;
 
         private void DrawVixenOperationsSection()
         {
@@ -27,51 +27,87 @@ namespace raspichu.inspector_enhancements.editor
 
             if (showVixenOperations)
             {
+
+
                 EditorGUILayout.BeginHorizontal(); // Begin horizontal layout
                 if (GUILayout.Button("Toggle off"))
                 {
-                    CreateVixenObject(true);
+                    CreateVixenObjects(true);
                 }
 
                 if (GUILayout.Button("Toggle on"))
                 {
-                    CreateVixenObject(false);
+                    CreateVixenObjects(false);
                 }
                 EditorGUILayout.EndHorizontal(); // End horizontal layout
+
+                if (selectedObjects.Length > 1)
+                {
+                    forEach = EditorGUILayout.Toggle("For each", forEach);
+                    // tooltip
+                    EditorGUILayout.HelpBox("If enabled, it will create a toggle for each selected object. If disabled, one toggle for all", MessageType.Info);
+                }
             }
 
             EditorGUILayout.EndVertical();
         }
 
-        private void CreateVixenObject(bool toggleOn)
+        private void CreateVixenObjects(bool toggleOn)
         {
             if (selectedObjects.Length == 0) return;
 
             string toggleStateName = toggleOn ? "Off" : "On";
-            string selectedObjectsNames = GetSelectedObjectsNames();
 
-            string name = $"{selectedObjectsNames} - {toggleStateName}";
+            GameObject lastSelectedObject = selectedObjects[selectedObjects.Length - 1];
 
+            // Create a list to hold all created GameObjects
+            List<GameObject> createdObjects = new List<GameObject>();
+
+            if (forEach)
+            {
+                for (int i = 0; i < selectedObjects.Length; i++)
+                {
+                    string name = $"{selectedObjects[i].name} - {toggleStateName}";
+
+                    GameObject newObject = createVixenFrom(name, new GameObject[] { selectedObjects[i] }, toggleOn, lastSelectedObject.transform);
+
+                    createdObjects.Add(newObject);
+                }
+            }
+            else
+            {
+                string selectedObjectsNames = GetNameFrom(selectedObjects);
+                string name = $"{selectedObjectsNames} - {toggleStateName}";
+
+                GameObject newObject = createVixenFrom(name, selectedObjects, toggleOn, lastSelectedObject.transform);
+
+                createdObjects.Add(newObject);
+
+            }
+
+            // Convert the list of created GameObjects to an array
+            GameObject[] createdObjectsArray = createdObjects.ToArray();
+
+            // Select all the created GameObjects
+            Selection.objects = createdObjectsArray;
+        }
+
+        private GameObject createVixenFrom(string name, GameObject[] toggleObjects, bool toggleOn, Transform position)
+        {
             GameObject newObject = new GameObject(name);
-            Undo.RegisterCreatedObjectUndo(newObject, "Create " + name);
+            newObject.transform.SetParent(position.parent, false);
+            newObject.transform.SetSiblingIndex(position.transform.GetSiblingIndex() + 1);
 
-            Transform parentTransform = selectedObjects[selectedObjects.Length - 1].transform;
-            newObject.transform.SetParent(parentTransform.parent, false);
-            newObject.transform.SetSiblingIndex(parentTransform.GetSiblingIndex() + 1);
-
-            // Add the VixenControl script to the new GameObject
             VixenControl vixenControl = newObject.AddComponent<VixenControl>();
 
             List<Component> componentsToAdd = new List<Component>();
-
-            foreach (var selectedObject in selectedObjects)
+            foreach (var iObject in toggleObjects)
             {
-                if (selectedObject != null)
+                if (iObject != null)
                 {
-                    componentsToAdd.Add(selectedObject.transform);
+                    componentsToAdd.Add(iObject.transform);
                 }
             }
-
             if (toggleOn)
             {
                 vixenControl.whenInactive = componentsToAdd.ToArray();
@@ -81,19 +117,15 @@ namespace raspichu.inspector_enhancements.editor
                 vixenControl.whenActive = componentsToAdd.ToArray();
             }
 
-
-            Debug.Log($"Created {name} GameObject with VixenControl script");
-
-            // Select new GameObject
-            Selection.activeGameObject = newObject;
+            return newObject;
         }
 
-        private string GetSelectedObjectsNames()
+        private string GetNameFrom(GameObject[] gameObject)
         {
-            if (selectedObjects.Length == 0) return "Unknown";
+            if (gameObject.Length == 0) return "Unknown";
 
             List<string> names = new List<string>();
-            foreach (var selectedObject in selectedObjects)
+            foreach (var selectedObject in gameObject)
             {
                 if (selectedObject != null)
                 {
@@ -105,4 +137,3 @@ namespace raspichu.inspector_enhancements.editor
         }
     }
 }
-#endif
