@@ -1,0 +1,26 @@
+{
+    "name": "raspichu.inspector_enhancements.editor",
+    "rootNamespace": "",
+    "references": [
+        "VRC.SDK3A",
+        "nadena.dev.ndmf",
+        "nadena.dev.modular-avatar.core",
+        "raspichu.vrc_tools.component",
+        "Resilience.Vixen.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "dev.hai-vr.resilience.vixen",
+            "expression": "1.0",
+            "define": "VIXEN_EXISTS"
+        }
+    ],
+    "noEngineReferences": false
+}
