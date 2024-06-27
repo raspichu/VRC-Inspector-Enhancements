@@ -20,14 +20,6 @@ namespace raspichu.inspector_enhancements.editor
         private SkinnedMeshRenderer[] skinnedMeshRenderers;
         private VRCPhysBone[] physBones;
 
-        private enum PhysBoneSetup
-        {
-            Soft,
-            Default,
-            Hard
-        }
-        private PhysBoneSetup selectedPhysBoneSetup = PhysBoneSetup.Default;
-
         [MenuItem("Window/Pichu/Inspector Enhancements")]
         public static void ShowWindow()
         {
@@ -111,6 +103,22 @@ namespace raspichu.inspector_enhancements.editor
         private VRCPhysBone[] GetPhysBones(GameObject[] objects)
         {
             return objects.Select(obj => obj.GetComponent<VRCPhysBone>()).Where(physBone => physBone != null).ToArray();
+        }
+
+        private GameObject FindAvatarDescriptor(Transform startTransform)
+        {
+            Transform parentTransform = startTransform;
+            while (parentTransform != null)
+            {
+                VRCAvatarDescriptor avatarDescriptor = parentTransform.GetComponent<VRCAvatarDescriptor>();
+                if (avatarDescriptor != null)
+                {
+                    return avatarDescriptor.gameObject;
+                }
+                parentTransform = parentTransform.parent;
+            }
+
+            return null; // No avatar descriptor found in the parent hierarchy
         }
     }
 }
