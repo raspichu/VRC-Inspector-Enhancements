@@ -1,3 +1,4 @@
+#if VIXEN_EXISTS
 using UnityEditor;
 using UnityEngine;
 using Resilience.Vixen.Components;
@@ -122,6 +123,42 @@ namespace raspichu.inspector_enhancements.editor
             return newObject;
         }
 
+        private GameObject createVixenFromBlendshape(string name, SkinnedMeshRenderer render, int blendshapeIndex, Transform position, float value)
+        {
+            GameObject newObject = new GameObject(name);
+            newObject.transform.SetParent(position.parent, false);
+            newObject.transform.SetSiblingIndex(position.transform.GetSiblingIndex() + 1);
+            Undo.RegisterCreatedObjectUndo(newObject, "Create " + name);
+
+            string blendshapeName = render.sharedMesh.GetBlendShapeName(blendshapeIndex);
+
+            VixenControl vixenControl = newObject.AddComponent<VixenControl>();
+
+            // Create and populate the VixenProperty
+            VixenProperty blendShapeProperty = new VixenProperty
+            {
+                fullClassName = "UnityEngine.SkinnedMeshRenderer",
+                propertyName = $"blendShape.{blendshapeName}",
+                valueType = VixenValueType.Float,
+                floatValue = value,
+                flip = false,
+                unboundBaked = false
+            };
+
+            VixenSubject vixenSubject = new VixenSubject
+            {
+                selection = VixenSelection.Normal,
+                targets = new GameObject[] { render.gameObject },
+                childrenOf = new GameObject[] { position.gameObject },
+                exceptions = new GameObject[0], // Assuming no exceptions
+                properties = new VixenProperty[] { blendShapeProperty }
+            };
+
+            // Assign the VixenSubject to the VixenControl
+            vixenControl.subjects = new VixenSubject[] { vixenSubject };
+            return newObject;
+        }
+
         private string GetNameFrom(GameObject[] gameObject)
         {
             if (gameObject.Length == 0) return "Unknown";
@@ -139,3 +176,4 @@ namespace raspichu.inspector_enhancements.editor
         }
     }
 }
+#endif

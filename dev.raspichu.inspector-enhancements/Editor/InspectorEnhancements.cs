@@ -3,10 +3,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using VRC.SDK3.Dynamics.PhysBone.Components;
 using VRC.SDK3.Avatars.Components;
-#if MA_EXISTS
-using nadena.dev.modular_avatar.core;
-using nadena.dev.ndmf;
-#endif
+
 using System.Linq;
 
 namespace raspichu.inspector_enhancements.editor

@@ -22,6 +22,11 @@
             "name": "dev.hai-vr.resilience.vixen",
             "expression": "1.0",
             "define": "VIXEN_EXISTS"
+        },
+        {
+            "name": "nadena.dev.ndmf",
+            "expression": "1.0",
+            "define": "MA_EXISTS"
         }
     ],
     "noEngineReferences": false
