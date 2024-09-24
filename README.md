@@ -28,12 +28,6 @@ Depending on what you have selected, it will display different options.
 - **Set Bounds:**
   - Adjust the center bounds of SkinnedMeshRenderer components to (0, 0, 0) and extent to (1, 1, 1).
 
-### Physbones
-
-- **Physbones:**
-  - Create and remove physbones with predefined force settings.
-  - Create a floor collider for physbones.
-
 ### Vixen Toggles
 
 - **GameObject Toggles:**
@@ -42,7 +36,6 @@ Depending on what you have selected, it will display different options.
 ## Usage
 ### How to Use
 
-- Open the Unity Editor and navigate to `Window -> Pichu -> Inspector Enhancements`.
 - Select a GameObject with a SkinnedMeshRenderer to utilize blend shape and set bounds features.
 - Use the transform operations section for resetting transforms easily.
 - Use the Vixen toggles section to create toggles for GameObjects or blend shapes.
