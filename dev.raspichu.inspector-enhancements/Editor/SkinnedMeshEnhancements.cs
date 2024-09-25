@@ -30,6 +30,8 @@ namespace raspichu.inspector_enhancements.editor
 
         // Dictionary to store selected SkinnedMeshRenderers
         private static Dictionary<int, SkinnedMeshRenderer> persistentSelectedSkinnedMeshes = new Dictionary<int, SkinnedMeshRenderer>();
+        private static bool filterZeroWeight = false; // Track whether to filter zero weights
+
 
         private static bool enhancementsEnabled = true; // Track whether enhancements are enabled
 
@@ -61,7 +63,7 @@ namespace raspichu.inspector_enhancements.editor
             return true; // Always enable the menu item
         }
 
-        public static bool OnBlendShapeUI(UnityEditor.Editor __instance, SerializedProperty ___m_BlendShapeWeights)
+        public static bool OnBlendShapeUI(UnityEditor.Editor __instance)
         {
             if (!enhancementsEnabled) return true;
 
@@ -123,9 +125,9 @@ namespace raspichu.inspector_enhancements.editor
         }
 
 
+
         private static void DrawBlendShapeUI()
         {
-
             // Create a Rect for the "Center Bounds" button
             Rect buttonRect = EditorGUILayout.GetControlRect(false, EditorGUIUtility.singleLineHeight);
             buttonRect.width = buttonRect.width / 1.6f; // Set the button width to half of the available width
@@ -136,18 +138,42 @@ namespace raspichu.inspector_enhancements.editor
                 CenterBounds();
             }
 
-
-
             isFoldedOut = EditorGUILayout.Foldout(isFoldedOut, new GUIContent("BlendShapes"), true);
+
+            // Capture the current Rect for the foldout label
+            Rect foldoutRect = GUILayoutUtility.GetLastRect();
+            if (Event.current.type == EventType.ContextClick && foldoutRect.Contains(Event.current.mousePosition))
+            {
+                // Reverse list
+                var reversedList = persistentSelectedSkinnedMeshes.Values.ToList();
+                reversedList.Reverse();
+                ShowAllBlendshapeContextMenu(reversedList);
+            }
 
             if (isFoldedOut)
             {
                 EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
+                // Search Box
                 float searchBoxHeight = EditorGUIUtility.singleLineHeight;
                 Rect searchRect = EditorGUILayout.GetControlRect(false, searchBoxHeight);
+                searchRect.width -= 35; // Adjust width for the filter button
+                searchRect.y += 2; // Adjust the Y position
 
+                // Create the search field
                 blendShapeSearch = searchField.OnGUI(searchRect, blendShapeSearch);
+
+                // Calculate the button's position, ensuring it fits on the screen
+                Rect filterButtonRect = new Rect(searchRect.xMax + 5, searchRect.y, 30, searchBoxHeight);
+                filterButtonRect.y -= 1; // Adjust the Y position
+
+                // Use the button as a GUI.Toggle
+                bool buttonPressed = GUI.Toggle(filterButtonRect, filterZeroWeight, "0", EditorStyles.miniButton);
+                if (buttonPressed != filterZeroWeight) // Check if the state has changed
+                {
+                    filterZeroWeight = buttonPressed; // Update the filter state
+                }
+
 
                 var groupedBlendShapes = GroupBlendShapesByRenderer();
 
@@ -175,9 +201,19 @@ namespace raspichu.inspector_enhancements.editor
                         titleRect.height = 20;
 
                         EditorGUI.LabelField(titleRect, renderer.name, titleStyle);
+                        if (Event.current.type == EventType.ContextClick && titleRect.Contains(Event.current.mousePosition))
+                        {
+                            ShowAllBlendshapeContextMenu(new List<SkinnedMeshRenderer> { renderer });
+                        }
                     }
 
                     GUILayout.Space(2); // Reduce the space between the title and the list
+
+                    // Filter shapes based on the button's state
+                    if (filterZeroWeight)
+                    {
+                        shapes = shapes.Where(shape => shape.Weight > 0).ToList();
+                    }
 
                     ReorderableList blendshapeList = new ReorderableList(shapes, typeof(BlendShapeInfo), false, false, false, false)
                     {
@@ -188,6 +224,8 @@ namespace raspichu.inspector_enhancements.editor
 
                             EditorGUI.LabelField(new Rect(rect.x, rect.y, 150f, EditorGUIUtility.singleLineHeight), blendShape.Content);
                             float currentWeight = blendShape.Weight;
+
+                            EditorGUI.BeginChangeCheck();
 
                             float newWeight = EditorGUI.Slider(new Rect(rect.x + 160f, rect.y, rect.width - 160f, EditorGUIUtility.singleLineHeight), blendShape.Weight, 0, 100);
 
@@ -208,52 +246,38 @@ namespace raspichu.inspector_enhancements.editor
                     blendshapeList.DoLayoutList();
 
                     GUILayout.Space(-EditorGUIUtility.singleLineHeight);
-
                 }
 
                 EditorGUILayout.EndVertical();
             }
         }
 
+
         private static Dictionary<SkinnedMeshRenderer, List<BlendShapeInfo>> GroupBlendShapesByRenderer()
         {
             var groupedBlendShapes = new Dictionary<SkinnedMeshRenderer, List<BlendShapeInfo>>();
 
-            foreach (var renderer in persistentSelectedSkinnedMeshes.Values)
+            // Iterate through the existing blendShapes list
+            foreach (var blendShape in blendShapes)
             {
-                if (renderer.sharedMesh == null) continue;
+                if (blendShape.Renderer == null || blendShape.Renderer.sharedMesh == null) continue;
 
                 // Prepare a list to hold the blend shapes for this renderer
-                var blendShapeList = new List<BlendShapeInfo>();
-
-                Mesh mesh = renderer.sharedMesh;
-                for (int i = 0; i < mesh.blendShapeCount; i++)
+                if (!groupedBlendShapes.TryGetValue(blendShape.Renderer, out var blendShapeList))
                 {
-                    var blendShapeName = mesh.GetBlendShapeName(i);
-                    var blendShapeInfo = new BlendShapeInfo
-                    {
-                        Index = i,
-                        Name = blendShapeName,
-                        Content = new GUIContent(blendShapeName),
-                        Weight = renderer.GetBlendShapeWeight(i),
-                        Renderer = renderer
-                    };
-
-                    // Only add to the list if it's not already present
-                    if (
-                        !blendShapeList.Exists(bs => bs.Name == blendShapeName)
-                        )
-                    {
-                        if (!string.IsNullOrEmpty(blendShapeSearch) && !blendShapeName.ToLower().Contains(blendShapeSearch.ToLower()))
-                        {
-                            continue;
-                        }
-                        blendShapeList.Add(blendShapeInfo);
-                    }
+                    blendShapeList = new List<BlendShapeInfo>();
+                    groupedBlendShapes[blendShape.Renderer] = blendShapeList; // Add new renderer entry
                 }
 
-                // Add the list to the grouped blend shapes
-                groupedBlendShapes[renderer] = blendShapeList;
+                // Only add to the list if it's not already present
+                if (!blendShapeList.Exists(bs => bs.Name == blendShape.Name))
+                {
+                    if (!string.IsNullOrEmpty(blendShapeSearch) && !blendShape.Name.ToLower().Contains(blendShapeSearch.ToLower()))
+                    {
+                        continue; // Skip if the search term does not match
+                    }
+                    blendShapeList.Add(blendShape); // Add the blend shape info
+                }
             }
 
             return groupedBlendShapes;
@@ -270,6 +294,18 @@ namespace raspichu.inspector_enhancements.editor
                 renderer.localBounds = new Bounds(Vector3.zero, Vector3.one * 2);
             }
             InternalEditorUtility.RepaintAllViews();
+        }
+
+        private static void ShowAllBlendshapeContextMenu(List<SkinnedMeshRenderer> renderers)
+        {
+            GenericMenu menu = new GenericMenu();
+            menu.AddItem(new GUIContent("Copy blendshapes"), false, () => CopyAllBlendShapes(renderers));
+            menu.AddItem(new GUIContent("Paste blendshapes"), false, () => PasteAllBlendShapes(renderers));
+            if (!CanBePastedAllBlendshapes())
+            {
+                menu.AddDisabledItem(new GUIContent("Paste blendshapes"));
+            }
+            menu.ShowAsContext();
         }
 
         // Show context menu for the blend shape
@@ -506,6 +542,55 @@ namespace raspichu.inspector_enhancements.editor
             }
 
             return null;
+        }
+
+        private static void CopyAllBlendShapes(List<SkinnedMeshRenderer> renderers)
+        {
+
+            string blendShapeData = "";
+            foreach (var renderer in renderers)
+            {
+                if (renderer.sharedMesh == null) continue;
+                for (int i = 0; i < renderer.sharedMesh.blendShapeCount; i++)
+                {
+                    // If blendshape exists in the list, skip
+                    if (blendShapeData.Contains($"_{renderer.sharedMesh.GetBlendShapeName(i)}:")) continue;
+                    float weight = renderer.GetBlendShapeWeight(i);
+                    blendShapeData += $"_{renderer.sharedMesh.GetBlendShapeName(i)}:{weight};";
+                }
+            }
+
+            // Copy to clipboard
+            EditorGUIUtility.systemCopyBuffer = blendShapeData;
+        }
+
+        private static void PasteAllBlendShapes(List<SkinnedMeshRenderer> renderers)
+        {
+            string blendShapeData = EditorGUIUtility.systemCopyBuffer;
+
+            string[] blendShapePairs = blendShapeData.Split(';');
+            foreach (string blendShapePair in blendShapePairs)
+            {
+                if (string.IsNullOrEmpty(blendShapePair)) continue;
+
+                string[] parts = blendShapePair.Split(':');
+                string name = parts[0].Substring(1);
+                float weight = float.Parse(parts[1]);
+
+                foreach (var renderer in renderers)
+                {
+                    if (renderer.sharedMesh == null) continue;
+                    int index = renderer.sharedMesh.GetBlendShapeIndex(name);
+                    if (index >= 0)
+                    {
+                        renderer.SetBlendShapeWeight(index, weight);
+                    }
+                }
+            }
+        }
+        private static bool CanBePastedAllBlendshapes()
+        {
+            return EditorGUIUtility.systemCopyBuffer.Contains(":");
         }
     }
 }
