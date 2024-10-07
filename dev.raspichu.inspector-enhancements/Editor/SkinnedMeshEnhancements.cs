@@ -305,6 +305,9 @@ namespace raspichu.inspector_enhancements.editor
             {
                 menu.AddDisabledItem(new GUIContent("Paste blendshapes"));
             }
+            // Randomize blendshapes
+            menu.AddSeparator("");
+            menu.AddItem(new GUIContent("Randomize blendshapes"), false, () => RandomizeBlendshapes(renderers));
             menu.ShowAsContext();
         }
 
@@ -573,18 +576,38 @@ namespace raspichu.inspector_enhancements.editor
             {
                 if (string.IsNullOrEmpty(blendShapePair)) continue;
 
+
                 string[] parts = blendShapePair.Split(':');
                 string name = parts[0].Substring(1);
                 float weight = float.Parse(parts[1]);
 
                 foreach (var renderer in renderers)
                 {
+
+                    Undo.RecordObject(renderer, "Paste Blendshapes");
+
                     if (renderer.sharedMesh == null) continue;
                     int index = renderer.sharedMesh.GetBlendShapeIndex(name);
                     if (index >= 0)
                     {
                         renderer.SetBlendShapeWeight(index, weight);
                     }
+                }
+            }
+        }
+
+        private static void RandomizeBlendshapes(List<SkinnedMeshRenderer> renderers)
+        {
+            foreach (var renderer in renderers)
+            {
+                if (renderer.sharedMesh == null) continue;
+                Undo.RecordObject(renderer, "Randomize Blendshapes");
+
+                if (renderer.sharedMesh == null) continue;
+                for (int i = 0; i < renderer.sharedMesh.blendShapeCount; i++)
+                {
+                    float weight = Random.Range(0, 100);
+                    renderer.SetBlendShapeWeight(i, weight);
                 }
             }
         }
