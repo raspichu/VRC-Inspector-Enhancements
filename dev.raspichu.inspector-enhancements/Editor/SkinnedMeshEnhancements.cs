@@ -222,12 +222,19 @@ namespace raspichu.inspector_enhancements.editor
                         {
                             var blendShape = shapes[index];
 
-                            EditorGUI.LabelField(new Rect(rect.x, rect.y, 150f, EditorGUIUtility.singleLineHeight), blendShape.Content);
+                            // EditorGUI.LabelField(new Rect(rect.x, rect.y, 150f, EditorGUIUtility.singleLineHeight), blendShape.Content);
+                            
+                            // Define fixed widths for the label and slider
+                            float labelWidth = rect.width * 0.4f; // Label takes 40% of the available space
+                            float sliderWidth = rect.width * 0.6f; // Slider takes 60% of the available space
+                            EditorGUI.LabelField(new Rect(rect.x, rect.y, labelWidth, EditorGUIUtility.singleLineHeight), blendShape.Content);
+
                             float currentWeight = blendShape.Weight;
 
                             EditorGUI.BeginChangeCheck();
 
-                            float newWeight = EditorGUI.Slider(new Rect(rect.x + 160f, rect.y, rect.width - 160f, EditorGUIUtility.singleLineHeight), blendShape.Weight, 0, 100);
+                            // float newWeight = EditorGUI.Slider(new Rect(rect.x + 160f, rect.y, rect.width - 160f, EditorGUIUtility.singleLineHeight), blendShape.Weight, 0, 100);
+                            float newWeight = EditorGUI.Slider(new Rect(rect.x + labelWidth + 5f, rect.y, sliderWidth, EditorGUIUtility.singleLineHeight), blendShape.Weight, 0, 100);
 
                             if (!Mathf.Approximately(currentWeight, newWeight))
                             {
