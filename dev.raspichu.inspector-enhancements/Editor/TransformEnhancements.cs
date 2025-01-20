@@ -59,7 +59,11 @@ namespace raspichu.inspector_enhancements.editor
                         if (Event.current.button == 0) // Left-click
                         {
                             // Default left-click action
-                            DistributeTransforms(persistentSelectedTransforms.Values.Reverse(), Vector3.right, lastSpacing);
+                            DistributeTransforms(
+                                persistentSelectedTransforms.Values.OrderBy(t => t.GetSiblingIndex()),
+                                Vector3.right,
+                                lastSpacing
+                            );
                             Event.current.Use();
                         }
                         else if (Event.current.button == 1) // Right-click
@@ -106,7 +110,9 @@ namespace raspichu.inspector_enhancements.editor
         {
             GenericMenu menu = new GenericMenu();
 
-            // Add options for axes
+             // Sort transforms by hierarchy order
+            var sortedTransforms = persistentSelectedTransforms.Values.OrderBy(t => t.GetSiblingIndex());
+
             // Add options for spacing values
             float[] spacings = { 0.2f, 0.25f, 0.35f, 0.5f, 0.65f, 0.75f, 1f};
             foreach (float spacing in spacings)
@@ -116,7 +122,7 @@ namespace raspichu.inspector_enhancements.editor
                     spacing == lastSpacing, // Highlight if this is the last used spacing
                     () => {
                     lastSpacing = spacing;
-                    DistributeTransforms(persistentSelectedTransforms.Values.Reverse(), Vector3.right, spacing);
+                    DistributeTransforms(sortedTransforms, Vector3.right, spacing);
                 }
                 );
             }
