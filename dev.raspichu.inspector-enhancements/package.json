@@ -1,7 +1,7 @@
 {
     "name": "dev.raspichu.inspector-enhancements",
     "displayName": "Pichu Inspector Enhancements",
-    "version": "0.5.4",
+    "version": "0.5.5",
     "unity": "2019.4",
     "description": "A tool that enhances the inspector with more features and tools.",
     "author": {
