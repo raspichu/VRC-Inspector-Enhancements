@@ -12,6 +12,7 @@ Depending on what you have selected, it will display different options.
 
 - **Transform Operations:**
   - Quickly reset position, rotation, and scale of selected GameObjects.
+  - Able to distrubite selected items along X axes
 
 ### Skinned Meshes
 
