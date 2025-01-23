@@ -350,6 +350,7 @@ namespace raspichu.inspector_enhancements.editor
 #if MA_EXISTS
             menu.AddSeparator("");
             menu.AddItem(new GUIContent("Add to MA Blend Sync"), false, () => AddBlendshapeToMASync(blendShape));
+            menu.AddItem(new GUIContent("Add to Delete MA Shape Changer"), false, () => AddBlendshapeToMADelete(blendShape));
 #endif
 
 #if VIXEN_EXISTS
@@ -357,6 +358,8 @@ namespace raspichu.inspector_enhancements.editor
         menu.AddSeparator("");
         menu.AddItem(new GUIContent("Make vixen toggle"), false, () => AddBlendshapeToVixenSync(blendShape));
 #endif
+
+
 
 
             menu.ShowAsContext();
@@ -445,6 +448,58 @@ namespace raspichu.inspector_enhancements.editor
             // Mark the blendshapeSync component as dirty to ensure changes are saved
             EditorUtility.SetDirty(blendshapeSync);
         }
+
+        private static void AddBlendshapeToMADelete(BlendShapeInfo blendShape)
+        {
+            // Get or add ModularAvatarShapeChanger component to the current selected object
+            SkinnedMeshRenderer renderer = blendShape.Renderer;
+            GameObject selectedObject = renderer.gameObject;
+
+            ModularAvatarShapeChanger shapeChanger = selectedObject.GetComponent<ModularAvatarShapeChanger>();
+            if (!shapeChanger)
+            {
+                shapeChanger = Undo.AddComponent<ModularAvatarShapeChanger>(selectedObject);
+            }
+            else
+            {
+                Undo.RecordObject(shapeChanger, "Add Blendshape Binding");
+            }
+
+            // Get the name of the blend shape using the index
+            string blendshapeName = renderer.sharedMesh.GetBlendShapeName(blendShape.Index);
+            // If the blendshape is already in the list (With the same object)
+            if (shapeChanger.Shapes.Exists(s => s.ShapeName == blendshapeName && s.Object.referencePath == AnimationUtility.CalculateTransformPath(renderer.transform, FindAvatarDescriptor(renderer.transform).transform)))
+            {
+                return;
+            }
+
+            // Shape changer is a list ChangedShape
+            /*
+                public AvatarObjectReference Object;
+                public string ShapeName;
+                public ShapeChangeType ChangeType;
+                public float Value;
+            */
+            ChangedShape newShape = new ChangedShape
+            {
+                Object = new AvatarObjectReference { referencePath = AnimationUtility.CalculateTransformPath(renderer.transform, FindAvatarDescriptor(renderer.transform).transform) },
+                ShapeName = blendshapeName,
+                ChangeType = ShapeChangeType.Delete,
+                Value = 0
+            };
+
+            // Add the new binding to the blendshapeSync component
+            shapeChanger.Shapes.Add(newShape);
+
+
+
+
+            // Find a SkinnedMeshRenderer with the same blend shape in the avatar hierarchy
+            
+
+        }
+
+
 #endif
 
 #if VIXEN_EXISTS

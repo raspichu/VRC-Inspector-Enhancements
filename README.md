@@ -24,6 +24,7 @@ Depending on what you have selected, it will display different options.
   - Create a Modular avatar blendshape Sync:
     - Automatically creates ModularAvatarBlendshapeSync or adds to an existing one the blendshape.
     - It searches across the avatar for a skinned mesh that has the same blendshape name.
+  - Create a Modular avatar Shape Changer with that blendshape as Delete
   - Create a blendshape toggle with Vixen from the blendshape management.
 
 - **Set Bounds:**
