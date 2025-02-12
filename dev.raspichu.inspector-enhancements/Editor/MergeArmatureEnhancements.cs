@@ -98,16 +98,16 @@ namespace raspichu.inspector_enhancements.editor
 
                 // Now we need to copy the values
                 var instanceScaleAdjuster = instanceBone.GetComponent<ModularAvatarScaleAdjuster>();
-                if (instanceScaleAdjuster == null)
+                if (instanceScaleAdjuster != null)
                 {
-                    // Create the component if it doesn't exist
-                    instanceScaleAdjuster= Undo.AddComponent<ModularAvatarScaleAdjuster>(instanceBone.gameObject);
+                    // Destroy the component if it already exists
+                    Undo.DestroyObjectImmediate(instanceScaleAdjuster);
                 }
+                // Create the component
+                instanceScaleAdjuster= Undo.AddComponent<ModularAvatarScaleAdjuster>(instanceBone.gameObject);
 
                 // Copy the values of Scale from scaleAdjuster to instanceScaleAdjuster
                 instanceScaleAdjuster.Scale = scaleAdjuster.Scale;
-
-
             }
            
         }
