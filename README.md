@@ -26,6 +26,7 @@ Depending on what you have selected, it will display different options.
     - It searches across the avatar for a skinned mesh that has the same blendshape name.
   - Create a Modular avatar Shape Changer with that blendshape as Delete
   - Create a blendshape toggle with Vixen from the blendshape management.
+  - Create PA Delete Polygons with that blendshape and fileterd skinned mesh:
 
 - **Set Bounds:**
   - Adjust the center bounds of SkinnedMeshRenderer components to (0, 0, 0) and extent to (1, 1, 1).

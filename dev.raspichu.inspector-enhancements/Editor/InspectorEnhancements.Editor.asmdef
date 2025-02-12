@@ -6,7 +6,8 @@
         "nadena.dev.ndmf",
         "nadena.dev.modular-avatar.core",
         "raspichu.vrc_tools.component",
-        "Resilience.Vixen.Runtime"
+        "Resilience.Vixen.Runtime",
+        "Prefabulous.Universal.Common.Runtime"
     ],
     "includePlatforms": [
         "Editor"
@@ -27,6 +28,11 @@
             "name": "nadena.dev.ndmf",
             "expression": "1.0",
             "define": "MA_EXISTS"
+        },
+        {
+            "name": "dev.hai-vr.resilience.prefabulous.universal",
+            "expression": "1.0",
+            "define": "PA_EXISTS"
         }
     ],
     "noEngineReferences": false

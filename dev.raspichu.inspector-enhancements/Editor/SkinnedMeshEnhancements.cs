@@ -18,6 +18,9 @@ using nadena.dev.ndmf;
 using Resilience.Vixen.Components;
 #endif
 
+#if PA_EXISTS
+using Prefabulous.Universal.Common.Runtime;
+#endif
 
 namespace raspichu.inspector_enhancements.editor
 {
@@ -353,11 +356,18 @@ namespace raspichu.inspector_enhancements.editor
             menu.AddItem(new GUIContent("Add to Delete MA Shape Changer"), false, () => AddBlendshapeToMADelete(blendShape));
 #endif
 
+#if PA_EXISTS
+        // Add to Prefabulous
+        menu.AddSeparator("");
+        menu.AddItem(new GUIContent("Add to PA Delete Polygon"), false, () => AddBlendshapeToPADelete(blendShape));
+#endif
+
 #if VIXEN_EXISTS
         // Add to Vixen
         menu.AddSeparator("");
         menu.AddItem(new GUIContent("Make vixen toggle"), false, () => AddBlendshapeToVixenSync(blendShape));
 #endif
+
 
 
 
@@ -500,6 +510,46 @@ namespace raspichu.inspector_enhancements.editor
         }
 
 
+#endif
+
+#if PA_EXISTS
+    private static void AddBlendshapeToPADelete(BlendShapeInfo blendShape)
+    {
+        // Get or add PrefabulousDeletePolygons component to the current selected object
+        SkinnedMeshRenderer renderer = blendShape.Renderer;
+        GameObject selectedObject = renderer.gameObject;
+
+        PrefabulousDeletePolygons deletePolygons = selectedObject.GetComponent<PrefabulousDeletePolygons>();
+        if (!deletePolygons)
+        {
+            deletePolygons = Undo.AddComponent<PrefabulousDeletePolygons>(selectedObject);
+        }
+        else
+        {
+            Undo.RecordObject(deletePolygons, "Add Blendshape Binding");
+        }
+
+        // Enable limitToSpecificMeshes on the component
+        deletePolygons.limitToSpecificMeshes = true;
+
+        // Add the renderer to the list of renderers if it's not already present
+        if (!deletePolygons.renderers.Contains(renderer))
+        {
+            deletePolygons.renderers = deletePolygons.renderers.Append(renderer).ToArray();
+        }
+
+        // Get the name of the blend shape using the index
+        string blendshapeName = renderer.sharedMesh.GetBlendShapeName(blendShape.Index);
+        // Add the blendshape to the list if it's not already present
+        if (!deletePolygons.blendShapes.Contains(blendshapeName))
+        {
+            deletePolygons.blendShapes = deletePolygons.blendShapes.Append(blendshapeName).ToArray();
+        }
+
+        // Set blendshape to 100
+        renderer.SetBlendShapeWeight(blendShape.Index, 100);
+
+    }
 #endif
 
 #if VIXEN_EXISTS
