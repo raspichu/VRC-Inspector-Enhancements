@@ -529,14 +529,20 @@ namespace raspichu.inspector_enhancements.editor
             Undo.RecordObject(deletePolygons, "Add Blendshape Binding");
         }
 
+        Debug.Log($"Adding render to PrefabulousDeletePolygons");
         // Enable limitToSpecificMeshes on the component
         deletePolygons.limitToSpecificMeshes = true;
 
         // Add the renderer to the list of renderers if it's not already present
-        if (!deletePolygons.renderers.Contains(renderer))
+        if (deletePolygons.renderers == null)
+        {
+            deletePolygons.renderers = new SkinnedMeshRenderer[] { renderer };
+        } else if (!deletePolygons.renderers.Contains(renderer))
         {
             deletePolygons.renderers = deletePolygons.renderers.Append(renderer).ToArray();
         }
+
+        Debug.Log($"Adding blendshape '{blendShape.Name}' to PrefabulousDeletePolygons");
 
         // Get the name of the blend shape using the index
         string blendshapeName = renderer.sharedMesh.GetBlendShapeName(blendShape.Index);
