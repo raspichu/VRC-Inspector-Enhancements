@@ -36,6 +36,11 @@ Depending on what you have selected, it will display different options.
 - **GameObject Toggles:**
   - Create Vixen toggles for each or all selected GameObjects.
 
+### MA Merge Armature
+
+- **Copy Avatar Scale Adjuster to Armature**
+  - Added a button on Merge Armature to copy MA Scale Adjuster to the clothes
+
 ## Usage
 ### How to Use
 

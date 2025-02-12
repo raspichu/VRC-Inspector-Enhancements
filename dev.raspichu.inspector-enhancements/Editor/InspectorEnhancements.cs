@@ -25,6 +25,14 @@ namespace raspichu.inspector_enhancements.editor
             harmonyTransform.Patch(onInspectorGUITransform, null, new(typeof(TransformEnhancements), nameof(TransformEnhancements.OnInspectorGUI)));
             AssemblyReloadEvents.beforeAssemblyReload += () => harmonyTransform.UnpatchAll();
 
+            // Harmony patching for MergeArmatureEnhancements
+            var harmonyMAMergeArmature = new Harmony("raspichu.inspector_enhancements.editor_mergearmature_harmony");
+            var targetTypeMAMergeArmature = AccessTools.TypeByName("nadena.dev.modular_avatar.core.editor.MAEditorBase");
+            var onInspectorGUMAMergeArmature = AccessTools.Method(targetTypeMAMergeArmature, "OnInspectorGUI");
+
+            harmonyMAMergeArmature.Patch(onInspectorGUMAMergeArmature, null, new(typeof(MergeArmatureEnhancements), nameof(MergeArmatureEnhancements.OnInspectorGUI)));
+            AssemblyReloadEvents.beforeAssemblyReload += () => harmonyMAMergeArmature.UnpatchAll();
+
 #if VIXEN_EXISTS
             // Harmony patching for VixenEnhancements
             var harmonyVixen = new Harmony("raspichu.inspector_enhancements.editor_vixen_harmony");
