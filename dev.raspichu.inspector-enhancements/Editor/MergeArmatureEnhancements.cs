@@ -109,6 +109,11 @@ namespace raspichu.inspector_enhancements.editor
                 var instanceScaleAdjuster = instanceBone.GetComponent<ModularAvatarScaleAdjuster>();
                 if (instanceScaleAdjuster != null)
                 {
+                    // Check if the component have the same values
+                    if (instanceScaleAdjuster.Scale == scaleAdjuster.Scale)
+                    {
+                        continue;
+                    }
                     // Destroy the component if it already exists
                     Undo.DestroyObjectImmediate(instanceScaleAdjuster);
                 }
