@@ -68,6 +68,15 @@ namespace raspichu.inspector_enhancements.editor
             var target = editor.mergeTargetObject;
             if (target == null) return;
 
+            // Get all ModularAvatarScaleAdjuster components on target
+            var scaleAdjusterInstance = instanceTransform.GetComponentsInChildren<ModularAvatarScaleAdjuster>(true);
+            Debug.Log("Found " + scaleAdjusterInstance.Length + " MAScaleAdjusters on instance");
+            // Delete all MAScaleAdjusters on instance
+            foreach (var scaleAdjuster in scaleAdjusterInstance)
+            {
+                Undo.DestroyObjectImmediate(scaleAdjuster);
+            }
+
             // target is an armature, need to find all the children with MAScaleAdjuster on it
             var scaleAdjusters = target.GetComponentsInChildren<ModularAvatarScaleAdjuster>(true);
             Debug.Log("Found " + scaleAdjusters.Length + " MAScaleAdjusters");
