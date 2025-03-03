@@ -61,7 +61,6 @@ namespace raspichu.inspector_enhancements.editor
                             // Default left-click action
                             DistributeTransforms(
                                 persistentSelectedTransforms.Values.OrderBy(t => t.GetSiblingIndex()),
-                                Vector3.right,
                                 lastSpacing
                             );
                             Event.current.Use();
@@ -122,7 +121,7 @@ namespace raspichu.inspector_enhancements.editor
                     spacing == lastSpacing, // Highlight if this is the last used spacing
                     () => {
                     lastSpacing = spacing;
-                    DistributeTransforms(sortedTransforms, Vector3.right, spacing);
+                    DistributeTransforms(sortedTransforms, spacing);
                 }
                 );
             }
@@ -131,15 +130,40 @@ namespace raspichu.inspector_enhancements.editor
         }
 
 
-        private static void DistributeTransforms(IEnumerable<Transform> transforms, Vector3 direction, float spacing)
+       private static void DistributeTransforms(IEnumerable<Transform> transforms, float spacing)
         {
-            float currentPosition = 0f;
-
+            // Group transforms by Z axis (we will ignore small variations in Z for grouping)
+            var groupedTransforms = new Dictionary<float, List<Transform>>();
+            
             foreach (var transform in transforms)
             {
-                Undo.RecordObject(transform, "Distribute Transforms");
-                transform.localPosition = direction * currentPosition + Vector3.Scale(transform.localPosition, Vector3.one - direction);
-                currentPosition += spacing;
+                // Get the Z position (rounding or ignoring small differences is up to you)
+                float zPosition = Mathf.Round(transform.localPosition.z); // Round Z to group similar values
+                if (!groupedTransforms.ContainsKey(zPosition))
+                {
+                    groupedTransforms[zPosition] = new List<Transform>();
+                }
+                groupedTransforms[zPosition].Add(transform);
+            }
+
+            // Now for each Z group, we will distribute the transforms
+            foreach (var group in groupedTransforms)
+            {
+                float currentPositionX = 0f;
+
+                // Loop through each transform in the current Z group
+                foreach (var transform in group.Value)
+                {
+                    Undo.RecordObject(transform, "Distribute Transforms");
+
+                    // We only adjust the X and Y position in this case
+                    transform.localPosition = new Vector3(currentPositionX, transform.localPosition.y, transform.localPosition.z);
+                    // Move the current X position for the next transform in the same group
+                    currentPositionX += spacing;
+                }
+
+                // After distributing the transforms in one Z group, move the X position for the next group
+                currentPositionX += spacing;
             }
         }
 
