@@ -138,7 +138,7 @@ namespace raspichu.inspector_enhancements.editor
             foreach (var transform in transforms)
             {
                 // Get the Z position (rounding or ignoring small differences is up to you)
-                float zPosition = Mathf.Round(transform.localPosition.z); // Round Z to group similar values
+                float zPosition = transform.localPosition.z;
                 if (!groupedTransforms.ContainsKey(zPosition))
                 {
                     groupedTransforms[zPosition] = new List<Transform>();
