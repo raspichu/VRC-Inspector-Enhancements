@@ -142,16 +142,10 @@ namespace raspichu.inspector_enhancements.editor
             }
 
             isFoldedOut = EditorGUILayout.Foldout(isFoldedOut, new GUIContent("BlendShapes"), true);
-
             // Capture the current Rect for the foldout label
             Rect foldoutRect = GUILayoutUtility.GetLastRect();
-            if (Event.current.type == EventType.ContextClick && foldoutRect.Contains(Event.current.mousePosition))
-            {
-                // Reverse list
-                var reversedList = persistentSelectedSkinnedMeshes.Values.ToList();
-                reversedList.Reverse();
-                ShowAllBlendshapeContextMenu(reversedList);
-            }
+
+            bool isThereAglobalMod = false;
 
             if (isFoldedOut)
             {
@@ -191,6 +185,8 @@ namespace raspichu.inspector_enhancements.editor
 
                     if (shapes.Count == 0) continue;
 
+                    Rect titleRect = EditorGUILayout.GetControlRect(false, 0);
+
                     if (shapes.Count > 0 && persistentSelectedSkinnedMeshes.Count > 1)
                     {
                         GUIStyle titleStyle = new GUIStyle(EditorStyles.boldLabel)
@@ -199,16 +195,14 @@ namespace raspichu.inspector_enhancements.editor
                             fontSize = 12,
                             normal = { textColor = Color.white }
                         };
-
-                        Rect titleRect = EditorGUILayout.GetControlRect(false, 20);
+                        titleRect = EditorGUILayout.GetControlRect(false, 20);
                         titleRect.height = 20;
 
                         EditorGUI.LabelField(titleRect, renderer.name, titleStyle);
-                        if (Event.current.type == EventType.ContextClick && titleRect.Contains(Event.current.mousePosition))
-                        {
-                            ShowAllBlendshapeContextMenu(new List<SkinnedMeshRenderer> { renderer });
-                        }
+                       
                     }
+
+                    bool isThereASingleMod = false;
 
                     GUILayout.Space(2); // Reduce the space between the title and the list
 
@@ -225,7 +219,29 @@ namespace raspichu.inspector_enhancements.editor
                         {
                             var blendShape = shapes[index];
 
-                            // EditorGUI.LabelField(new Rect(rect.x, rect.y, 150f, EditorGUIUtility.singleLineHeight), blendShape.Content);
+                            // Now, I need to know if that blendshape changed from the prefab, just the blendshape, nothing else
+                            var modifications = PrefabUtility.GetPropertyModifications(blendShape.Renderer);
+
+                            // ! This shouldn't use the name instead the reference, but I'm not sure why it's not working
+                            PropertyModification mod = modifications?.FirstOrDefault(m =>
+                                m.propertyPath == $"m_BlendShapeWeights.Array.data[{blendShape.Index}]" && 
+                                m.target.name == blendShape.Renderer.name
+                             );
+                            
+
+                            // DEbug log the blendshape name and render name
+
+                            if (mod != null)
+                            {
+                                isThereAglobalMod = true;
+                                isThereASingleMod = true;
+                                // Unity's default override color (light blue)
+                                Color overrideColor = new Color(0.3f, 0.5f, 1f, 1f); // Clear Unity blue
+
+                                // Draw a **thin vertical line** on the left (2px wide)
+                                Rect indicatorRect = new Rect(rect.x - 5f, rect.y, 2f, rect.height);
+                                EditorGUI.DrawRect(indicatorRect, overrideColor);
+                            }
                             
                             // Define fixed widths for the label and slider
                             float labelWidth = rect.width * 0.4f; // Label takes 40% of the available space
@@ -248,10 +264,17 @@ namespace raspichu.inspector_enhancements.editor
                             // Right-click context menu
                             if (Event.current.type == EventType.ContextClick && rect.Contains(Event.current.mousePosition))
                             {
-                                ShowBlendShapeContextMenu(blendShape);
+                                ShowBlendShapeContextMenu(blendShape, mod);
+                            }
+
+
+                            if (Event.current.type == EventType.ContextClick && titleRect.Contains(Event.current.mousePosition))
+                            {
+                                ShowAllBlendshapeContextMenu(new List<SkinnedMeshRenderer> { renderer }, isThereASingleMod);
                             }
                         }
                     };
+
 
                     blendshapeList.DoLayoutList();
 
@@ -259,6 +282,15 @@ namespace raspichu.inspector_enhancements.editor
                 }
 
                 EditorGUILayout.EndVertical();
+            }
+
+
+            if (Event.current.type == EventType.ContextClick && foldoutRect.Contains(Event.current.mousePosition))
+            {
+                // Reverse list
+                var reversedList = persistentSelectedSkinnedMeshes.Values.ToList();
+                reversedList.Reverse();
+                ShowAllBlendshapeContextMenu(reversedList, isThereAglobalMod);
             }
         }
 
@@ -306,7 +338,7 @@ namespace raspichu.inspector_enhancements.editor
             InternalEditorUtility.RepaintAllViews();
         }
 
-        private static void ShowAllBlendshapeContextMenu(List<SkinnedMeshRenderer> renderers)
+        private static void ShowAllBlendshapeContextMenu(List<SkinnedMeshRenderer> renderers, bool mods)
         {
             GenericMenu menu = new GenericMenu();
             menu.AddItem(new GUIContent("Copy blendshapes"), false, () => CopyAllBlendShapes(renderers));
@@ -315,14 +347,22 @@ namespace raspichu.inspector_enhancements.editor
             {
                 menu.AddDisabledItem(new GUIContent("Paste blendshapes"));
             }
+            // Reset all blendshapes
+            menu.AddItem(new GUIContent("Reset"), false, () => ResetBlendshapeFromRenders(renderers));
+            if (!mods)
+            {
+                menu.AddDisabledItem(new GUIContent("Reset"));
+            }
+
             // Randomize blendshapes
             menu.AddSeparator("");
             menu.AddItem(new GUIContent("Randomize blendshapes"), false, () => RandomizeBlendshapes(renderers));
             menu.ShowAsContext();
         }
 
+
         // Show context menu for the blend shape
-        private static void ShowBlendShapeContextMenu(BlendShapeInfo blendShape)
+        private static void ShowBlendShapeContextMenu(BlendShapeInfo blendShape, PropertyModification mod = null)
         {
             if (blendShape.Index < 0) return; // Ensure we have a valid index
 
@@ -336,6 +376,14 @@ namespace raspichu.inspector_enhancements.editor
 
             // Add Paste Value option (disabled if clipboard is not a valid number)
             menu.AddItem(new GUIContent("Paste Value"), false, () => PasteBlendShapeValue(blendShape));
+
+                
+            menu.AddItem(new GUIContent("Reset Value"), false, () => ResetBlendShapeValue(blendShape.Renderer, mod));
+            if (mod == null)
+            {
+                menu.AddDisabledItem(new GUIContent("Reset Value"));
+            }
+
             if (!IsClipboardContainingNumber())
             {
                 menu.AddDisabledItem(new GUIContent("Paste Value"));
@@ -414,6 +462,51 @@ namespace raspichu.inspector_enhancements.editor
             float result;
             return float.TryParse(clipboardContent, out result);
         }
+
+        private static void ResetBlendshapeFromRenders(List<SkinnedMeshRenderer> renderers)
+        {
+            
+            foreach (var renderer in renderers)
+            {
+                // Get all modifications for the renderer
+                var modifications = PrefabUtility.GetPropertyModifications(renderer);
+                // Get all modifications for the blendshapes
+                var blendShapeMods = modifications.Where(m =>
+                    m.propertyPath.StartsWith("m_BlendShapeWeights.Array.data") && 
+                    m.target.name == renderer.name // Again, this should be the reference, not the name
+                ).ToList();
+                // Run ResetBlendShapeValue for each blendshape
+                Debug.Log($"Resetting blendshapes for: {renderer.name}");
+
+                foreach (var mod in blendShapeMods)
+                {
+                    // Show name of the blendshape
+                    Debug.Log($"Resetting blendshape: {mod.propertyPath}");
+                    ResetBlendShapeValue(renderer, mod);
+                }
+            }
+        }
+
+private static void ResetBlendShapeValue(SkinnedMeshRenderer renderer, PropertyModification mod)
+{
+    if (mod != null)
+    {
+        Undo.RecordObject(renderer, "Reset Blend Shape Value");
+
+        // Create a SerializedObject from the SkinnedMeshRenderer
+        SerializedObject serializedRenderer = new SerializedObject(renderer);
+
+        // Get the SerializedProperty based on the propertyPath from the PropertyModification
+        SerializedProperty blendShapeProperty = serializedRenderer.FindProperty(mod.propertyPath);
+
+        // Revert the property override manually after resetting the blend shape value
+        PrefabUtility.RevertPropertyOverride(blendShapeProperty, InteractionMode.AutomatedAction);
+        PrefabUtility.RevertPropertyOverride(blendShapeProperty, InteractionMode.UserAction);
+
+        // Apply changes to the prefab to reset the override flag properly
+        serializedRenderer.ApplyModifiedProperties();
+    }
+}
 
 #if MA_EXISTS
 
