@@ -185,7 +185,6 @@ namespace raspichu.inspector_enhancements.editor
             // Check if modifications for this mesh are already cached
             if (update || !meshModificationsCache.TryGetValue(mesh, out var modificationsDict))
             {
-                Debug.Log($"Fetching modifications for {renderer.name}");
                 // If not cached, fetch the modifications for the renderer
                 var modifications = PrefabUtility.GetPropertyModifications(renderer);
 
