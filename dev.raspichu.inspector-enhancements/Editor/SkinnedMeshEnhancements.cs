@@ -35,6 +35,13 @@ namespace raspichu.inspector_enhancements.editor
         private static Dictionary<int, SkinnedMeshRenderer> persistentSelectedSkinnedMeshes = new Dictionary<int, SkinnedMeshRenderer>();
         private static bool filterZeroWeight = false; // Track whether to filter zero weights
 
+        // HashSet to store the last selected SkinnedMeshRenderers
+        private static HashSet<int> lastSelectedRenderers = new HashSet<int>();
+
+        // Cache for prefab modifications
+        private static Dictionary<int, PropertyModification[]> prefabModificationsCache = new Dictionary<int, PropertyModification[]>();
+
+
 
         private static bool enhancementsEnabled = true; // Track whether enhancements are enabled
 
@@ -70,19 +77,32 @@ namespace raspichu.inspector_enhancements.editor
         {
             if (!enhancementsEnabled) return true;
 
-            // Update persistent selected SkinnedMeshRenderers
-            UpdatePersistentSelectedSkinnedMeshes(__instance.targets);
-
-            // Clear the blend shapes and collect from all selected renderers
-            blendShapes.Clear();
-            foreach (var renderer in persistentSelectedSkinnedMeshes.Values)
+            // Check if the target changed
+            if (SelectionChanged(__instance.targets))
             {
-                CollectBlendShapes(renderer);
+                // Update persistent selected SkinnedMeshRenderers
+                UpdatePersistentSelectedSkinnedMeshes(__instance.targets);
+
+                UpdateBlendshapes();
+
+                Undo.undoRedoPerformed += UpdateBlendshapes;
+
             }
 
             DrawBlendShapeUI();
 
             return false;
+        }
+
+
+        private static bool SelectionChanged(Object[] targets)
+        {
+            HashSet<int> currentSelection = new HashSet<int>(targets.OfType<SkinnedMeshRenderer>().Select(r => r.GetInstanceID()));
+            if (lastSelectedRenderers.SetEquals(currentSelection)) return false;
+
+            lastSelectedRenderers = currentSelection;
+            prefabModificationsCache.Clear();
+            return true;
         }
 
         private static void UpdatePersistentSelectedSkinnedMeshes(Object[] targets)
@@ -101,6 +121,25 @@ namespace raspichu.inspector_enhancements.editor
                     persistentSelectedSkinnedMeshes[instanceId] = renderer;
                 }
             }
+        }
+
+        private static void UpdateBlendshapes()
+        {
+            blendShapes.Clear();
+            foreach (var renderer in persistentSelectedSkinnedMeshes.Values)
+            {
+                CollectBlendShapes(renderer);
+            }
+            EditorApplication.delayCall += () =>
+            {
+                foreach (var renderer in persistentSelectedSkinnedMeshes.Values)
+                {
+                    GetModifications(renderer, true);
+                }
+                InternalEditorUtility.RepaintAllViews();
+            };
+
+            // Refresh the Inspector
         }
 
         private static void CollectBlendShapes(SkinnedMeshRenderer renderer)
@@ -127,6 +166,16 @@ namespace raspichu.inspector_enhancements.editor
             }
         }
 
+        private static PropertyModification[] GetModifications(SkinnedMeshRenderer renderer, bool reset = false)
+        {
+            int id = renderer.GetInstanceID();
+            if (reset || !prefabModificationsCache.TryGetValue(id, out var modifications))
+            {
+                modifications = PrefabUtility.GetPropertyModifications(renderer);
+                prefabModificationsCache[id] = modifications;
+            }
+            return modifications;
+        }
 
 
         private static void DrawBlendShapeUI()
@@ -220,7 +269,7 @@ namespace raspichu.inspector_enhancements.editor
                             var blendShape = shapes[index];
 
                             // Now, I need to know if that blendshape changed from the prefab, just the blendshape, nothing else
-                            var modifications = PrefabUtility.GetPropertyModifications(blendShape.Renderer);
+                            var modifications = GetModifications(blendShape.Renderer, false);
 
                             // ! This shouldn't use the name instead the reference, but I'm not sure why it's not working
                             PropertyModification mod = modifications?.FirstOrDefault(m =>
@@ -259,6 +308,10 @@ namespace raspichu.inspector_enhancements.editor
                             {
                                 Undo.RecordObject(blendShape.Renderer, "Change Blend Shape Weight");
                                 blendShape.Renderer.SetBlendShapeWeight(blendShape.Index, newWeight);
+
+                                EditorUtility.SetDirty(blendShape.Renderer);
+
+                                UpdateBlendshapes();
                             }
 
                             // Right-click context menu
@@ -445,6 +498,8 @@ namespace raspichu.inspector_enhancements.editor
                 Undo.RecordObject(blendShape.Renderer, "Paste Blend Shape Value");
                 blendShape.Renderer.SetBlendShapeWeight(blendShape.Index, newValue);
                 Debug.Log($"Pasted blend shape value: {newValue} to {blendShape.Name}");
+
+                UpdateBlendshapes();
             }
         }
 
@@ -454,6 +509,11 @@ namespace raspichu.inspector_enhancements.editor
             Undo.RecordObject(blendShape.Renderer, $"Set Blend Shape Value to {value} for {blendShape.Name}");
             blendShape.Renderer.SetBlendShapeWeight(blendShape.Index, value);
             Debug.Log($"Set blend shape value of {blendShape.Name} to: {value}");
+
+            EditorUtility.SetDirty(blendShape.Renderer);
+
+            UpdateBlendshapes();
+
         }
 
         private static bool IsClipboardContainingNumber()
@@ -487,26 +547,34 @@ namespace raspichu.inspector_enhancements.editor
             }
         }
 
-private static void ResetBlendShapeValue(SkinnedMeshRenderer renderer, PropertyModification mod)
-{
-    if (mod != null)
-    {
-        Undo.RecordObject(renderer, "Reset Blend Shape Value");
+        private static void ResetBlendShapeValue(SkinnedMeshRenderer renderer, PropertyModification mod)
+        {
+            if (mod != null)
+            {
+                Undo.RecordObject(renderer, "Reset Blend Shape Value");
 
-        // Create a SerializedObject from the SkinnedMeshRenderer
-        SerializedObject serializedRenderer = new SerializedObject(renderer);
+                // Create a SerializedObject from the SkinnedMeshRenderer
+                SerializedObject serializedRenderer = new SerializedObject(renderer);
 
-        // Get the SerializedProperty based on the propertyPath from the PropertyModification
-        SerializedProperty blendShapeProperty = serializedRenderer.FindProperty(mod.propertyPath);
+                // Get the SerializedProperty based on the propertyPath from the PropertyModification
+                SerializedProperty blendShapeProperty = serializedRenderer.FindProperty(mod.propertyPath);
 
-        // Revert the property override manually after resetting the blend shape value
-        PrefabUtility.RevertPropertyOverride(blendShapeProperty, InteractionMode.AutomatedAction);
-        PrefabUtility.RevertPropertyOverride(blendShapeProperty, InteractionMode.UserAction);
+                // SEt Dirty
+                EditorUtility.SetDirty(renderer);
 
-        // Apply changes to the prefab to reset the override flag properly
-        serializedRenderer.ApplyModifiedProperties();
-    }
-}
+                // Revert the property override manually after resetting the blend shape value
+                PrefabUtility.RevertPropertyOverride(blendShapeProperty, InteractionMode.AutomatedAction);
+                PrefabUtility.RevertPropertyOverride(blendShapeProperty, InteractionMode.UserAction);
+
+                // serializedRenderer.ApplyModifiedProperties();
+
+                EditorApplication.delayCall += () =>
+                {
+                    UpdateBlendshapes();
+                };
+
+            }
+        }
 
 #if MA_EXISTS
 
@@ -655,6 +723,7 @@ private static void ResetBlendShapeValue(SkinnedMeshRenderer renderer, PropertyM
         // Set blendshape to 100
         renderer.SetBlendShapeWeight(blendShape.Index, 100);
 
+        UpdateBlendshapes();
     }
 #endif
 
