@@ -39,7 +39,13 @@ namespace raspichu.inspector_enhancements.editor
         private static HashSet<int> lastSelectedRenderers = new HashSet<int>();
 
         // Cache for prefab modifications
-        private static Dictionary<int, PropertyModification[]> prefabModificationsCache = new Dictionary<int, PropertyModification[]>();
+        private static Dictionary<Mesh, Dictionary<string, PropertyModification>> meshModificationsCache = new Dictionary<Mesh, Dictionary<string, PropertyModification>>();
+
+        private static bool reload = false;
+
+
+        private static float lastUpdateTime = 0f;  // Track the last update time
+        private static float updateInterval = 1f;  // Set the update interval (1 second)
 
 
 
@@ -77,8 +83,10 @@ namespace raspichu.inspector_enhancements.editor
         {
             if (!enhancementsEnabled) return true;
 
+            float elapsedTime = Time.realtimeSinceStartup - lastUpdateTime;
+
             // Check if the target changed
-            if (SelectionChanged(__instance.targets))
+            if (elapsedTime > updateInterval ||SelectionChanged(__instance.targets))
             {
                 // Update persistent selected SkinnedMeshRenderers
                 UpdatePersistentSelectedSkinnedMeshes(__instance.targets);
@@ -89,6 +97,8 @@ namespace raspichu.inspector_enhancements.editor
 
             }
 
+            lastUpdateTime = Time.realtimeSinceStartup;
+
             DrawBlendShapeUI();
 
             return false;
@@ -97,11 +107,12 @@ namespace raspichu.inspector_enhancements.editor
 
         private static bool SelectionChanged(Object[] targets)
         {
+            // Show debuglog of types
             HashSet<int> currentSelection = new HashSet<int>(targets.OfType<SkinnedMeshRenderer>().Select(r => r.GetInstanceID()));
             if (lastSelectedRenderers.SetEquals(currentSelection)) return false;
 
             lastSelectedRenderers = currentSelection;
-            prefabModificationsCache.Clear();
+            meshModificationsCache.Clear();
             return true;
         }
 
@@ -134,7 +145,7 @@ namespace raspichu.inspector_enhancements.editor
             {
                 foreach (var renderer in persistentSelectedSkinnedMeshes.Values)
                 {
-                    GetModifications(renderer, true);
+                    GetModificationsByMesh(renderer, true);
                 }
                 InternalEditorUtility.RepaintAllViews();
             };
@@ -166,15 +177,32 @@ namespace raspichu.inspector_enhancements.editor
             }
         }
 
-        private static PropertyModification[] GetModifications(SkinnedMeshRenderer renderer, bool reset = false)
+        private static Dictionary<string, PropertyModification> GetModificationsByMesh(SkinnedMeshRenderer renderer, bool update = false)
         {
-            int id = renderer.GetInstanceID();
-            if (reset || !prefabModificationsCache.TryGetValue(id, out var modifications))
+            // Fetch the mesh associated with this renderer
+            Mesh mesh = renderer.sharedMesh;
+
+            // Check if modifications for this mesh are already cached
+            if (update || !meshModificationsCache.TryGetValue(mesh, out var modificationsDict))
             {
-                modifications = PrefabUtility.GetPropertyModifications(renderer);
-                prefabModificationsCache[id] = modifications;
+                Debug.Log($"Fetching modifications for {renderer.name}");
+                // If not cached, fetch the modifications for the renderer
+                var modifications = PrefabUtility.GetPropertyModifications(renderer);
+
+                // Create a new dictionary to store the modifications by property path
+                modificationsDict = new Dictionary<string, PropertyModification>();
+
+                // Populate the dictionary with the property paths
+                foreach (var mod in modifications)
+                {
+                    modificationsDict[mod.propertyPath] = mod;
+                }
+
+                // Cache the dictionary by mesh
+                meshModificationsCache[mesh] = modificationsDict;
             }
-            return modifications;
+
+            return modificationsDict;
         }
 
 
@@ -219,7 +247,6 @@ namespace raspichu.inspector_enhancements.editor
                 {
                     filterZeroWeight = buttonPressed; // Update the filter state
                 }
-
 
                 var groupedBlendShapes = GroupBlendShapesByRenderer();
 
@@ -268,15 +295,21 @@ namespace raspichu.inspector_enhancements.editor
                         {
                             var blendShape = shapes[index];
 
-                            // Now, I need to know if that blendshape changed from the prefab, just the blendshape, nothing else
-                            var modifications = GetModifications(blendShape.Renderer, false);
+                            // // Now, I need to know if that blendshape changed from the prefab, just the blendshape, nothing else
+                            // var modifications = GetModifications(blendShape.Renderer, false);
 
-                            // ! This shouldn't use the name instead the reference, but I'm not sure why it's not working
-                            PropertyModification mod = modifications?.FirstOrDefault(m =>
-                                m.propertyPath == $"m_BlendShapeWeights.Array.data[{blendShape.Index}]" && 
-                                m.target.name == blendShape.Renderer.name
-                             );
-                            
+                            // // ! This shouldn't use the name instead the reference, but I'm not sure why it's not working
+                            // PropertyModification mod = modifications?.FirstOrDefault(m =>
+                            //     m.propertyPath == $"m_BlendShapeWeights.Array.data[{blendShape.Index}]" && 
+                            //     m.target.name == blendShape.Renderer.name
+                            // );
+
+                            // Now, in your drawing method, use the dictionary for quick lookup
+                            var modificationsDict = GetModificationsByMesh(blendShape.Renderer, false);
+                            string propertyPath = $"m_BlendShapeWeights.Array.data[{blendShape.Index}]";
+
+                            PropertyModification mod = modificationsDict.ContainsKey(propertyPath) ? modificationsDict[propertyPath] : null;
+
 
                             // DEbug log the blendshape name and render name
 
