@@ -192,9 +192,14 @@ namespace raspichu.inspector_enhancements.editor
                 modificationsDict = new Dictionary<string, PropertyModification>();
 
                 // Populate the dictionary with the property paths
-                foreach (var mod in modifications)
+                if (modifications != null) 
                 {
-                    modificationsDict[mod.propertyPath] = mod;
+                    foreach (var mod in modifications)
+                    {
+                        // If is not the mesh skip
+                        if (mod.target.name != mesh.name) continue; // This shouldn't use name but the reference is not the same for some reason
+                        modificationsDict[mod.propertyPath] = mod;
+                    }
                 }
 
                 // Cache the dictionary by mesh
