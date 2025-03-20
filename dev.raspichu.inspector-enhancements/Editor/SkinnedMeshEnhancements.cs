@@ -155,7 +155,7 @@ namespace raspichu.inspector_enhancements.editor
 
         private static void CollectBlendShapes(SkinnedMeshRenderer renderer)
         {
-            if (renderer.sharedMesh == null) return;
+            if (renderer == null ||renderer.sharedMesh == null) return;
 
             Mesh mesh = renderer.sharedMesh;
             for (int i = 0; i < mesh.blendShapeCount; i++)
@@ -194,6 +194,11 @@ namespace raspichu.inspector_enhancements.editor
             {
                 // Fetch the modifications for the renderer
                 var modifications = PrefabUtility.GetPropertyModifications(renderer) ?? new PropertyModification[0];
+                
+                if (modificationsDict == null)
+                {
+                    modificationsDict = new Dictionary<string, PropertyModification>();
+                }
 
                 // Populate the dictionary with the property paths
                 foreach (var mod in modifications)
@@ -879,7 +884,7 @@ namespace raspichu.inspector_enhancements.editor
             string blendShapeData = "";
             foreach (var renderer in renderers)
             {
-                if (renderer.sharedMesh == null) continue;
+                if (renderer == null || renderer.sharedMesh == null) continue;
                 for (int i = 0; i < renderer.sharedMesh.blendShapeCount; i++)
                 {
                     // If blendshape exists in the list, skip
@@ -912,7 +917,7 @@ namespace raspichu.inspector_enhancements.editor
 
                     Undo.RecordObject(renderer, "Paste Blendshapes");
 
-                    if (renderer.sharedMesh == null) continue;
+                    if (renderer == null || renderer.sharedMesh == null) continue;
                     int index = renderer.sharedMesh.GetBlendShapeIndex(name);
                     if (index >= 0)
                     {
@@ -926,10 +931,8 @@ namespace raspichu.inspector_enhancements.editor
         {
             foreach (var renderer in renderers)
             {
-                if (renderer.sharedMesh == null) continue;
+                if (renderer == null || renderer.sharedMesh == null) continue;
                 Undo.RecordObject(renderer, "Randomize Blendshapes");
-
-                if (renderer.sharedMesh == null) continue;
                 for (int i = 0; i < renderer.sharedMesh.blendShapeCount; i++)
                 {
                     float weight = Random.Range(0, 100);
