@@ -179,25 +179,27 @@ namespace raspichu.inspector_enhancements.editor
 
         private static Dictionary<string, PropertyModification> GetModificationsByMesh(SkinnedMeshRenderer renderer, bool update = false)
         {
-            // Fetch the mesh associated with this renderer
+            // Always return a valid dictionary
+            var modificationsDict = new Dictionary<string, PropertyModification>();
+
+            if (renderer == null || renderer.sharedMesh == null)
+            {
+                return modificationsDict;
+            }
+
             Mesh mesh = renderer.sharedMesh;
 
             // Check if modifications for this mesh are already cached
-            if (update || !meshModificationsCache.TryGetValue(mesh, out var modificationsDict))
+            if (update || !meshModificationsCache.TryGetValue(mesh, out modificationsDict))
             {
-                // If not cached, fetch the modifications for the renderer
-                var modifications = PrefabUtility.GetPropertyModifications(renderer);
-
-                // Create a new dictionary to store the modifications by property path
-                modificationsDict = new Dictionary<string, PropertyModification>();
+                // Fetch the modifications for the renderer
+                var modifications = PrefabUtility.GetPropertyModifications(renderer) ?? new PropertyModification[0];
 
                 // Populate the dictionary with the property paths
-                if (modifications != null) 
+                foreach (var mod in modifications)
                 {
-                    foreach (var mod in modifications)
+                    if (mod.target != null && mod.target.name == mesh.name)
                     {
-                        // If is not the mesh skip
-                        if (mod.target.name != mesh.name) continue; // This shouldn't use name but the reference is not the same for some reason
                         modificationsDict[mod.propertyPath] = mod;
                     }
                 }
