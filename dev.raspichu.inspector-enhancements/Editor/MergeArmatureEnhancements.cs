@@ -1,32 +1,27 @@
-using UnityEditor;
-using UnityEngine;
-using UnityEditorInternal;
-using System.Linq;
 using System.Collections.Generic;
-
+using System.Linq;
+using UnityEditor;
+using UnityEditorInternal;
+using UnityEngine;
 using VRC.SDK3.Avatars.Components;
-
 #if MA_EXISTS
 using nadena.dev.modular_avatar.core;
 using nadena.dev.ndmf;
 #endif
 
-
 namespace raspichu.inspector_enhancements.editor
 {
     public class MergeArmatureEnhancements : EditorWindow
     {
-        
- 
-        private static bool enhancementsEnabled = true; // Track whether enhancements are enabled
+        private const string MergeArmatureKey = "Pichu_MergeArmatureEnhancementsEnabled";
+        private static bool enhancementsEnabled = EditorPrefs.GetBool(MergeArmatureKey, true);
 
         [MenuItem("Tools/Pichu/Enable Merge Armature Enhancements")]
         private static void ToggleMergeArmatureEnhancements()
         {
-            enhancementsEnabled = !enhancementsEnabled; // Toggle the state
-            string status = enhancementsEnabled ? "enabled" : "disabled";
+            enhancementsEnabled = !enhancementsEnabled;
+            EditorPrefs.SetBool(MergeArmatureKey, enhancementsEnabled);
 
-            // Refresh the Inspector
             InternalEditorUtility.RepaintAllViews();
         }
 
@@ -34,14 +29,15 @@ namespace raspichu.inspector_enhancements.editor
         private static bool ToggleMergeArmatureEnhancementsValidation()
         {
             Menu.SetChecked("Tools/Pichu/Enable Merge Armature Enhancements", enhancementsEnabled);
-            return true; // Always enable the menu item
+            return true;
         }
-
 
         public static void OnInspectorGUI(UnityEditor.Editor __instance)
         {
-            if (!enhancementsEnabled) return; // Exit if enhancements are not enabled
-            if (__instance.GetType().Name != "MergeArmatureEditor") return; // Exit if the editor is not MAEditorBase
+            if (!enhancementsEnabled)
+                return; // Exit if enhancements are not enabled
+            if (__instance.GetType().Name != "MergeArmatureEditor")
+                return; // Exit if the editor is not MAEditorBase
 
             // Add small space
             EditorGUILayout.Space();
@@ -50,26 +46,27 @@ namespace raspichu.inspector_enhancements.editor
             // Add button to Copy avatar Scale Adjuster to armature
             if (GUILayout.Button("Copy MA Scale Adjuster to Armature"))
             {
-              CopyAvatarScaleAdjusterToArmature(__instance);
+                CopyAvatarScaleAdjusterToArmature(__instance);
             }
-
-
         }
 
         private static void CopyAvatarScaleAdjusterToArmature(UnityEditor.Editor __instance)
         {
             // Get Merge Target from MAEditorBase
             var editor = __instance.target as ModularAvatarMergeArmature;
-            if (editor == null) return;
+            if (editor == null)
+                return;
 
             var instanceTransform = editor.transform;
 
             // Access the mergeTargetObject from the MergeArmatureEditor
             var target = editor.mergeTargetObject;
-            if (target == null) return;
+            if (target == null)
+                return;
 
             // Get all ModularAvatarScaleAdjuster components on target
-            var scaleAdjusterInstance = instanceTransform.GetComponentsInChildren<ModularAvatarScaleAdjuster>(true);
+            var scaleAdjusterInstance =
+                instanceTransform.GetComponentsInChildren<ModularAvatarScaleAdjuster>(true);
             Debug.Log("Found " + scaleAdjusterInstance.Length + " MAScaleAdjusters on instance");
             // Delete all MAScaleAdjusters on instance
             foreach (var scaleAdjuster in scaleAdjusterInstance)
@@ -118,12 +115,13 @@ namespace raspichu.inspector_enhancements.editor
                     Undo.DestroyObjectImmediate(instanceScaleAdjuster);
                 }
                 // Create the component
-                instanceScaleAdjuster= Undo.AddComponent<ModularAvatarScaleAdjuster>(instanceBone.gameObject);
+                instanceScaleAdjuster = Undo.AddComponent<ModularAvatarScaleAdjuster>(
+                    instanceBone.gameObject
+                );
 
                 // Copy the values of Scale from scaleAdjuster to instanceScaleAdjuster
                 instanceScaleAdjuster.Scale = scaleAdjuster.Scale;
             }
-           
         }
 
         private static string GetRoute(Transform transform, Transform endTransform)

@@ -1,37 +1,46 @@
-using UnityEditor;
-using UnityEngine;
-using HarmonyLib;
 using System.Collections.Generic;
-using UnityEditorInternal;
 using System.Linq;
+using HarmonyLib;
+using UnityEditor;
+using UnityEditorInternal;
+using UnityEngine;
 
 namespace raspichu.inspector_enhancements.editor
 {
     public class TransformEnhancements : EditorWindow
     {
         private static bool showOperations = true; // State for foldout
-        private static bool enhancementsEnabled = true; // Track whether enhancements are enabled
-        private static Dictionary<int, Transform> persistentSelectedTransforms = new Dictionary<int, Transform>(); // Dictionary to store persistently selected transforms
+        private static Dictionary<int, Transform> persistentSelectedTransforms =
+            new Dictionary<int, Transform>(); // Dictionary to store persistently selected transforms
 
         private static float lastSpacing = 0.5f;
 
+        private const string TransformEnhancementsKey = "Pichu_TransformEnhancementsEnabled";
+        private static bool enhancementsEnabled = EditorPrefs.GetBool(
+            TransformEnhancementsKey,
+            true
+        );
 
         [MenuItem("Tools/Pichu/Enable Transform Enhancements")]
         private static void ToggleTransformEnhancements()
         {
-            enhancementsEnabled = !enhancementsEnabled; // Toggle the state
-            InternalEditorUtility.RepaintAllViews(); // Refresh the Inspector
+            enhancementsEnabled = !enhancementsEnabled;
+            EditorPrefs.SetBool(TransformEnhancementsKey, enhancementsEnabled);
+
+            InternalEditorUtility.RepaintAllViews();
         }
 
         [MenuItem("Tools/Pichu/Enable Transform Enhancements", true)]
         private static bool ToggleTransformEnhancementsValidation()
         {
             Menu.SetChecked("Tools/Pichu/Enable Transform Enhancements", enhancementsEnabled);
-            return true; // Always enable the menu item
+            return true;
         }
+
         public static void OnInspectorGUI(UnityEditor.Editor __instance)
         {
-            if (!enhancementsEnabled) return; // Exit if enhancements are not enabled
+            if (!enhancementsEnabled)
+                return; // Exit if enhancements are not enabled
 
             // Update persistent selected transforms
             UpdatePersistentSelectedTransforms(__instance.targets);
@@ -51,16 +60,24 @@ namespace raspichu.inspector_enhancements.editor
                 if (persistentSelectedTransforms.Count > 1)
                 {
                     // Create a button rect
-                    Rect buttonRect = GUILayoutUtility.GetRect(new GUIContent("Distribute"), GUI.skin.button);
+                    Rect buttonRect = GUILayoutUtility.GetRect(
+                        new GUIContent("Distribute"),
+                        GUI.skin.button
+                    );
 
                     // Render the button only for left-click
-                    if (Event.current.type == EventType.MouseDown && buttonRect.Contains(Event.current.mousePosition))
+                    if (
+                        Event.current.type == EventType.MouseDown
+                        && buttonRect.Contains(Event.current.mousePosition)
+                    )
                     {
                         if (Event.current.button == 0) // Left-click
                         {
                             // Default left-click action
                             DistributeTransforms(
-                                persistentSelectedTransforms.Values.OrderBy(t => t.GetSiblingIndex()),
+                                persistentSelectedTransforms.Values.OrderBy(t =>
+                                    t.GetSiblingIndex()
+                                ),
                                 lastSpacing
                             );
                             Event.current.Use();
@@ -109,32 +126,34 @@ namespace raspichu.inspector_enhancements.editor
         {
             GenericMenu menu = new GenericMenu();
 
-             // Sort transforms by hierarchy order
-            var sortedTransforms = persistentSelectedTransforms.Values.OrderBy(t => t.GetSiblingIndex());
+            // Sort transforms by hierarchy order
+            var sortedTransforms = persistentSelectedTransforms.Values.OrderBy(t =>
+                t.GetSiblingIndex()
+            );
 
             // Add options for spacing values
-            float[] spacings = { 0.2f, 0.25f, 0.35f, 0.5f, 0.65f, 0.75f, 1f};
+            float[] spacings = { 0.2f, 0.25f, 0.35f, 0.5f, 0.65f, 0.75f, 1f };
             foreach (float spacing in spacings)
             {
                 menu.AddItem(
-                    new GUIContent($"X+{spacing}"), 
+                    new GUIContent($"X+{spacing}"),
                     spacing == lastSpacing, // Highlight if this is the last used spacing
-                    () => {
-                    lastSpacing = spacing;
-                    DistributeTransforms(sortedTransforms, spacing);
-                }
+                    () =>
+                    {
+                        lastSpacing = spacing;
+                        DistributeTransforms(sortedTransforms, spacing);
+                    }
                 );
             }
 
             menu.ShowAsContext();
         }
 
-
-       private static void DistributeTransforms(IEnumerable<Transform> transforms, float spacing)
+        private static void DistributeTransforms(IEnumerable<Transform> transforms, float spacing)
         {
             // Group transforms by Z axis (we will ignore small variations in Z for grouping)
             var groupedTransforms = new Dictionary<float, List<Transform>>();
-            
+
             foreach (var transform in transforms)
             {
                 // Get the Z position (rounding or ignoring small differences is up to you)
@@ -157,7 +176,11 @@ namespace raspichu.inspector_enhancements.editor
                     Undo.RecordObject(transform, "Distribute Transforms");
 
                     // We only adjust the X and Y position in this case
-                    transform.localPosition = new Vector3(currentPositionX, transform.localPosition.y, transform.localPosition.z);
+                    transform.localPosition = new Vector3(
+                        currentPositionX,
+                        transform.localPosition.y,
+                        transform.localPosition.z
+                    );
                     // Move the current X position for the next transform in the same group
                     currentPositionX += spacing;
                 }
@@ -185,7 +208,6 @@ namespace raspichu.inspector_enhancements.editor
                 }
             }
         }
-
 
         private static void ApplyToPersistentSelectedTransforms(System.Action<Transform> action)
         {
