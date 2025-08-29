@@ -16,7 +16,7 @@ namespace raspichu.inspector_enhancements.editor
         private const string MergeArmatureKey = "Pichu_MergeArmatureEnhancementsEnabled";
         private static bool enhancementsEnabled = EditorPrefs.GetBool(MergeArmatureKey, true);
 
-        [MenuItem("Tools/Pichu/Enable Merge Armature Enhancements")]
+        [MenuItem("Tools/Pichu/Options/Enable Merge Armature Enhancements")]
         private static void ToggleMergeArmatureEnhancements()
         {
             enhancementsEnabled = !enhancementsEnabled;
@@ -25,10 +25,10 @@ namespace raspichu.inspector_enhancements.editor
             InternalEditorUtility.RepaintAllViews();
         }
 
-        [MenuItem("Tools/Pichu/Enable Merge Armature Enhancements", true)]
+        [MenuItem("Tools/Pichu/Options/Enable Merge Armature Enhancements", true)]
         private static bool ToggleMergeArmatureEnhancementsValidation()
         {
-            Menu.SetChecked("Tools/Pichu/Enable Merge Armature Enhancements", enhancementsEnabled);
+            Menu.SetChecked("Tools/Pichu/Options/Enable Merge Armature Enhancements", enhancementsEnabled);
             return true;
         }
 

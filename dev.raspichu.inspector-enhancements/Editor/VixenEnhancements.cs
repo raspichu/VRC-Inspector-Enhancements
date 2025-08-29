@@ -20,7 +20,7 @@ namespace raspichu.inspector_enhancements.editor
         private const string VixenEnhancementsKey = "Pichu_VixenEnhancementsEnabled";
         private static bool enhancementsEnabled = EditorPrefs.GetBool(VixenEnhancementsKey, true);
 
-        [MenuItem("Tools/Pichu/Enable Vixen Enhancements")]
+        [MenuItem("Tools/Pichu/Options/Enable Vixen Enhancements")]
         private static void ToggleVixenEnhancements()
         {
             enhancementsEnabled = !enhancementsEnabled;
@@ -32,10 +32,10 @@ namespace raspichu.inspector_enhancements.editor
             InternalEditorUtility.RepaintAllViews();
         }
 
-        [MenuItem("Tools/Pichu/Enable Vixen Enhancements", true)]
+        [MenuItem("Tools/Pichu/Options/Enable Vixen Enhancements", true)]
         private static bool ToggleVixenEnhancementsValidation()
         {
-            Menu.SetChecked("Tools/Pichu/Enable Vixen Enhancements", enhancementsEnabled);
+            Menu.SetChecked("Tools/Pichu/Options/Enable Vixen Enhancements", enhancementsEnabled);
             return true; // Siempre habilitado
         }
 

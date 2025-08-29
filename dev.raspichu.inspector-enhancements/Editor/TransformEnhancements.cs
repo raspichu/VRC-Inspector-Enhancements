@@ -21,7 +21,7 @@ namespace raspichu.inspector_enhancements.editor
             true
         );
 
-        [MenuItem("Tools/Pichu/Enable Transform Enhancements")]
+        [MenuItem("Tools/Pichu/Options/Enable Transform Enhancements")]
         private static void ToggleTransformEnhancements()
         {
             enhancementsEnabled = !enhancementsEnabled;
@@ -30,10 +30,10 @@ namespace raspichu.inspector_enhancements.editor
             InternalEditorUtility.RepaintAllViews();
         }
 
-        [MenuItem("Tools/Pichu/Enable Transform Enhancements", true)]
+        [MenuItem("Tools/Pichu/Options/Enable Transform Enhancements", true)]
         private static bool ToggleTransformEnhancementsValidation()
         {
-            Menu.SetChecked("Tools/Pichu/Enable Transform Enhancements", enhancementsEnabled);
+            Menu.SetChecked("Tools/Pichu/Options/Enable Transform Enhancements", enhancementsEnabled);
             return true;
         }
 

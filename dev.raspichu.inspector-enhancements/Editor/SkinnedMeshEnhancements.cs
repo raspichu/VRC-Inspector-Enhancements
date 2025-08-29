@@ -56,7 +56,7 @@ namespace raspichu.inspector_enhancements.editor
         private const string EnhancementsKey = "Pichu_SkinnedMeshEnhancementsEnabled";
         private static bool enhancementsEnabled = EditorPrefs.GetBool(EnhancementsKey, true);
 
-        [MenuItem("Tools/Pichu/Enable SkinnedMesh Enhancements")]
+        [MenuItem("Tools/Pichu/Options/Enable SkinnedMesh Enhancements")]
         private static void ToggleSkinnedMeshEnhancements()
         {
             enhancementsEnabled = !enhancementsEnabled; // Toggle the state
@@ -64,10 +64,10 @@ namespace raspichu.inspector_enhancements.editor
             InternalEditorUtility.RepaintAllViews();
         }
 
-        [MenuItem("Tools/Pichu/Enable SkinnedMesh Enhancements", true)]
+        [MenuItem("Tools/Pichu/Options/Enable SkinnedMesh Enhancements", true)]
         private static bool ToggleSkinnedMeshEnhancementsValidation()
         {
-            Menu.SetChecked("Tools/Pichu/Enable SkinnedMesh Enhancements", enhancementsEnabled);
+            Menu.SetChecked("Tools/Pichu/Options/Enable SkinnedMesh Enhancements", enhancementsEnabled);
             return true; // Always enable the menu item
         }
 
