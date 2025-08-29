@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using HarmonyLib;
 using UnityEditor;
 using UnityEditor.IMGUI.Controls;
@@ -35,6 +36,12 @@ namespace raspichu.inspector_enhancements.editor
 
         // HashSet to store the last selected SkinnedMeshRenderers
         private static HashSet<int> lastSelectedRenderers = new HashSet<int>();
+        private static Dictionary<string, List<string>> groups =
+            new Dictionary<string, List<string>>();
+        private static string selectedGroup = null;
+
+        private static readonly Dictionary<string, GUIStyle> _styles =
+            new Dictionary<string, GUIStyle>();
 
         private struct BlendShapeInfo
         {
@@ -64,6 +71,24 @@ namespace raspichu.inspector_enhancements.editor
             return true; // Always enable the menu item
         }
 
+        static SkinnedMeshEnhancements()
+        {
+            // Default styles
+            _styles["MenuButton"] = new GUIStyle(EditorStyles.miniButton)
+            {
+                padding = new RectOffset(0, 0, 0, 0),
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 10,
+            };
+
+            _styles["Label"] = new GUIStyle(EditorStyles.boldLabel)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontSize = 12,
+                normal = { textColor = Color.white },
+            };
+        }
+
         public static bool OnBlendShapeUI(
             UnityEditor.Editor __instance,
             SerializedProperty ___m_BlendShapeWeights
@@ -76,6 +101,8 @@ namespace raspichu.inspector_enhancements.editor
             if (SelectionChanged(__instance.targets))
             {
                 UpdatePersistentSelectedSkinnedMeshes(__instance.targets);
+                groups = CreateGroups();
+                selectedGroup = null;
             }
 
             DrawBlendShapeUI();
@@ -151,26 +178,65 @@ namespace raspichu.inspector_enhancements.editor
             if (!isFoldedOut)
                 return;
 
+            // Default static values for the list
+            GUIContent dropDownIcon = EditorGUIUtility.IconContent("d_icon dropdown");
+            float padding = 5f;
+            float menuButtonWidth = 16f; // width of the context menu button
+
+            string lowerSearch = blendShapeSearch.ToLower();
+
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
             // Horizontal row for + button, search, and filter toggle
             EditorGUILayout.BeginHorizontal();
 
             // + Button
-            if (GUILayout.Button("+", GUILayout.Width(25)))
+            if (GUILayout.Button("▼", EditorStyles.miniButton, GUILayout.Width(23)))
             {
                 ShowBlendShapeContextMenuHeader();
             }
 
-            // Search Box
+            // Filter search Box
             Rect searchRect = GUILayoutUtility.GetRect(
                 1,
                 EditorGUIUtility.singleLineHeight,
                 GUILayout.ExpandWidth(true)
             );
-            searchRect.x += 0; // Already in the right horizontal row
             searchRect.y += 3;
             blendShapeSearch = searchField.OnGUI(searchRect, blendShapeSearch);
+
+            // Filter groups
+            List<string> currentGroupList = null;
+            if (!string.IsNullOrEmpty(selectedGroup) && groups.ContainsKey(selectedGroup))
+                currentGroupList = groups[selectedGroup];
+
+            List<string> groupTitles = groups.Keys.ToList();
+
+            groupTitles =
+                (groups.Count == 1 && groups.ContainsKey("None"))
+                    ? new List<string> { "All" }
+                    : groupTitles.Prepend("All").ToList();
+            // Disable grouptitle when is only all
+            bool isGroupTitleEnabled = !(groupTitles.Count == 1 && groupTitles[0] == "All");
+            
+
+            // Determine the current index based on the selection
+            int currentIndex = selectedGroup != null ? groupTitles.IndexOf(selectedGroup) : 0;
+
+            // Show the Popup
+            EditorGUI.BeginDisabledGroup(!isGroupTitleEnabled);
+            int newIndex = EditorGUILayout.Popup(
+                currentIndex,
+                groupTitles.ToArray(),
+                GUILayout.Width(100)
+            );
+            EditorGUI.EndDisabledGroup();
+
+            // Update the selection if it changed
+            if (newIndex != currentIndex)
+            {
+                selectedGroup = newIndex == 0 ? null : groupTitles[newIndex];
+            }
 
             // Filter Toggle
             filterZeroWeight = GUILayout.Toggle(
@@ -186,7 +252,7 @@ namespace raspichu.inspector_enhancements.editor
             GUILayout.Space(5);
 
             // Iterate selected renderers
-            foreach (var renderer in persistentSelectedSkinnedMeshes.Values)
+            foreach (var renderer in persistentSelectedSkinnedMeshes.Values.Reverse())
             {
                 if (renderer == null || renderer.sharedMesh == null)
                     continue;
@@ -199,18 +265,63 @@ namespace raspichu.inspector_enhancements.editor
                 if (persistentSelectedSkinnedMeshes.Count > 1)
                 {
                     Rect titleRect = EditorGUILayout.GetControlRect(false, 20);
-                    GUIStyle titleStyle = new GUIStyle(EditorStyles.boldLabel)
-                    {
-                        alignment = TextAnchor.MiddleCenter,
-                        fontSize = 12,
-                        normal = { textColor = Color.white },
-                    };
-                    EditorGUI.LabelField(titleRect, renderer.name, titleStyle);
+                    EditorGUI.LabelField(titleRect, renderer.name, _styles["Label"]);
                 }
 
                 EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
+                List<int> visibleBlendShapeIndices = new List<int>();
                 for (int i = 0; i < mesh.blendShapeCount; i++)
+                {
+                    string blendShapeName = mesh.GetBlendShapeName(i);
+
+                    // Apply filters
+
+                    // Search filter
+                    if (
+                        !string.IsNullOrEmpty(lowerSearch)
+                        && !blendShapeName.ToLower().Contains(lowerSearch)
+                    )
+                    {
+                        continue;
+                    }
+
+                    // Group filter
+                    if (currentGroupList != null && !currentGroupList.Contains(blendShapeName))
+                    {
+                        continue;
+                    }
+
+                    // Zero values filter
+                    if (filterZeroWeight)
+                    {
+                        SerializedProperty weightProp =
+                            (i < blendShapesProp.arraySize)
+                                ? blendShapesProp.GetArrayElementAtIndex(i)
+                                : null;
+                        float weight = weightProp != null ? weightProp.floatValue : 0f;
+                        if (weight == 0f)
+                        {
+                            continue;
+                        }
+                    }
+                    visibleBlendShapeIndices.Add(i);
+                }
+
+                // Show "No blendshape available" if list is empty
+                if (visibleBlendShapeIndices.Count == 0)
+                {
+                    Rect rect = EditorGUILayout.GetControlRect(
+                        false,
+                        EditorGUIUtility.singleLineHeight
+                    );
+                    EditorGUI.LabelField(rect, "No blendshapes available", _styles["Label"]);
+                    EditorGUILayout.EndVertical();
+                    continue;
+                }
+
+                // Iterate the filtered blendshapes
+                foreach (int i in visibleBlendShapeIndices)
                 {
                     string blendShapeName = mesh.GetBlendShapeName(i);
 
@@ -222,31 +333,21 @@ namespace raspichu.inspector_enhancements.editor
 
                     float weight = weightProp != null ? weightProp.floatValue : 0f;
 
-                    // Filters
-                    if (
-                        !string.IsNullOrEmpty(blendShapeSearch)
-                        && !blendShapeName.ToLower().Contains(blendShapeSearch.ToLower())
-                    )
-                        continue;
-                    if (filterZeroWeight && weight == 0f)
-                        continue;
-
                     Rect rect = EditorGUILayout.GetControlRect(
                         false,
                         EditorGUIUtility.singleLineHeight
                     );
 
-                    float padding = 5f;
-                    float plusButtonWidth = 20f; // width of the "+" button
+                    float menuButtonHeight = rect.height; // forzamos que tenga la misma altura que la fila
                     float labelWidth = Mathf.Min(250f, rect.width * 0.4f);
-                    float sliderWidth = rect.width - labelWidth - plusButtonWidth - padding;
+                    float sliderWidth = rect.width - labelWidth - menuButtonWidth - padding;
 
                     if (weightProp != null)
                         EditorGUI.BeginProperty(rect, new GUIContent(blendShapeName), weightProp);
 
-                    // --- Botón "+" al inicio ---
-                    Rect plusRect = new Rect(rect.x, rect.y, plusButtonWidth, rect.height);
-                    if (GUI.Button(plusRect, "+"))
+                    // Button "+" at the start
+                    Rect plusRect = new Rect(rect.x, rect.y, menuButtonWidth, rect.height);
+                    if (GUI.Button(plusRect, dropDownIcon, _styles["MenuButton"]))
                     {
                         ShowBlendShapeContextMenu(
                             new BlendShapeInfo
@@ -263,7 +364,7 @@ namespace raspichu.inspector_enhancements.editor
                     // Label
                     EditorGUI.LabelField(
                         new Rect(
-                            rect.x + plusButtonWidth + padding,
+                            rect.x + menuButtonWidth + padding,
                             rect.y,
                             labelWidth,
                             rect.height
@@ -275,7 +376,7 @@ namespace raspichu.inspector_enhancements.editor
                     EditorGUI.BeginChangeCheck();
                     float newWeight = EditorGUI.Slider(
                         new Rect(
-                            rect.x + plusButtonWidth + padding + labelWidth + padding,
+                            rect.x + menuButtonWidth + padding + labelWidth + padding,
                             rect.y,
                             sliderWidth,
                             rect.height
@@ -739,6 +840,81 @@ namespace raspichu.inspector_enhancements.editor
                     renderer.SetBlendShapeWeight(i, weight);
                 }
             }
+        }
+
+        private static Dictionary<string, List<string>> CreateGroups()
+        {
+            Dictionary<string, List<string>> groupedBlendshapes =
+                new Dictionary<string, List<string>>();
+
+            foreach (var renderer in persistentSelectedSkinnedMeshes.Values)
+            {
+                if (renderer == null || renderer.sharedMesh == null)
+                    continue;
+
+                Mesh mesh = renderer.sharedMesh;
+
+                string currentGroup = "None";
+
+                for (int i = 0; i < mesh.blendShapeCount; i++)
+                {
+                    string blendShapeName = mesh.GetBlendShapeName(i);
+
+                    // Detect group header → 3 or more non-letter symbols followed by text
+                    if (IsGroupTitle(blendShapeName))
+                    {
+                        currentGroup = ExtractGroupName(blendShapeName);
+
+                        if (!groupedBlendshapes.ContainsKey(currentGroup))
+                            groupedBlendshapes[currentGroup] = new List<string>();
+
+                        // continue; // Skip adding this as a blendshape
+                    }
+
+                    // If no title detected, add to current group
+                    if (!groupedBlendshapes.ContainsKey(currentGroup))
+                        groupedBlendshapes[currentGroup] = new List<string>();
+
+                    groupedBlendshapes[currentGroup].Add(blendShapeName);
+                }
+            }
+
+            return groupedBlendshapes;
+        }
+
+        // Check if name looks like a group title: >=3 same symbol then text
+        private static bool IsGroupTitle(string name)
+        {
+            // Example match: "==== Face ====", "____ mouth ____", "+++ Hair +++"
+            // Regex: start with symbols repeated 3+ times, then optional spaces, then letters
+            return System.Text.RegularExpressions.Regex.IsMatch(
+                name,
+                @"^[^\w]{3,}\s*\w+",
+                RegexOptions.IgnoreCase
+            );
+        }
+
+        // Extract the actual text for the group
+        private static string ExtractGroupName(string name)
+        {
+            // Remove all non-letter characters from start and end
+            string result = System.Text.RegularExpressions.Regex.Replace(
+                name,
+                @"^[^\w]+|[^\w]+$",
+                ""
+            );
+
+            if (string.IsNullOrEmpty(result))
+            {
+                return "None";
+            }
+
+            if (result.Trim().ToLower() == "mmd")
+            {
+                return "MMD";
+            }
+
+            return char.ToUpper(result[0]) + result.Substring(1).ToLower();
         }
     }
 }
