@@ -9,7 +9,7 @@
     },
     "vpmDependencies": {
         "nadena.dev.modular-avatar": ">=1.10.0 <2.0.0-a",
-        "com.vrchat.avatars": ">=3.3.0 <3.9.0"
+        "com.vrchat.avatars": ">=3.3.0 <3.10.0"
     },
     "url": "https://github.com/raspichu/VRC-Inspector-Enhancements",
     "devDependencies": {
