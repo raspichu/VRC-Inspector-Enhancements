@@ -28,7 +28,10 @@ namespace raspichu.inspector_enhancements.editor
         [MenuItem("Tools/Pichu/Options/Enable Merge Armature Enhancements", true)]
         private static bool ToggleMergeArmatureEnhancementsValidation()
         {
-            Menu.SetChecked("Tools/Pichu/Options/Enable Merge Armature Enhancements", enhancementsEnabled);
+            Menu.SetChecked(
+                "Tools/Pichu/Options/Enable Merge Armature Enhancements",
+                enhancementsEnabled
+            );
             return true;
         }
 
@@ -39,12 +42,48 @@ namespace raspichu.inspector_enhancements.editor
             if (__instance.GetType().Name != "MergeArmatureEditor")
                 return; // Exit if the editor is not MAEditorBase
 
-            // Add small space
-            EditorGUILayout.Space();
-            // Add Title ""Inspector Enhancements""
-            EditorGUILayout.LabelField("Inspector Enhancements", EditorStyles.boldLabel);
-            // Add button to Copy avatar Scale Adjuster to armature
-            if (GUILayout.Button("Copy MA Scale Adjuster to Armature"))
+            // Add small space and a separator line with title in the middle
+            EditorGUILayout.Space(10);
+
+            Rect totalRect = EditorGUILayout.GetControlRect(false, 20);
+            GUIStyle labelStyle = new GUIStyle(EditorStyles.boldLabel)
+            {
+                alignment = TextAnchor.MiddleCenter,
+            };
+            GUIContent content = new GUIContent("Pichu Inspector Enhancements");
+
+            float textWidth = labelStyle.CalcSize(content).x + 10;
+            float lineWidth = (totalRect.width - textWidth) / 2;
+
+            // Draw lines and title
+            Color lineColor = new Color(0.5f, 0.5f, 0.5f, 0.5f);
+            EditorGUI.DrawRect(
+                new Rect(totalRect.x, totalRect.y + totalRect.height / 2, lineWidth, 1),
+                lineColor
+            );
+            EditorGUI.LabelField(totalRect, content, labelStyle);
+            EditorGUI.DrawRect(
+                new Rect(
+                    totalRect.x + lineWidth + textWidth,
+                    totalRect.y + totalRect.height / 2,
+                    lineWidth,
+                    1
+                ),
+                lineColor
+            );
+
+            EditorGUILayout.Space(5);
+
+            // Buttons
+
+            // Create button content with tooltip for hover description
+            GUIContent buttonContent = new GUIContent(
+                "Copy MA Scale Adjuster to Armature",
+                "Copies the MA Scale Adjuster components from the avatar to the clothing armature."
+            );
+
+            // Add button with hover tooltip
+            if (GUILayout.Button(buttonContent))
             {
                 CopyAvatarScaleAdjusterToArmature(__instance);
             }

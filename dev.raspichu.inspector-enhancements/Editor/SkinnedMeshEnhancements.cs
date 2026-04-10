@@ -67,7 +67,10 @@ namespace raspichu.inspector_enhancements.editor
         [MenuItem("Tools/Pichu/Options/Enable SkinnedMesh Enhancements", true)]
         private static bool ToggleSkinnedMeshEnhancementsValidation()
         {
-            Menu.SetChecked("Tools/Pichu/Options/Enable SkinnedMesh Enhancements", enhancementsEnabled);
+            Menu.SetChecked(
+                "Tools/Pichu/Options/Enable SkinnedMesh Enhancements",
+                enhancementsEnabled
+            );
             return true; // Always enable the menu item
         }
 
@@ -218,7 +221,6 @@ namespace raspichu.inspector_enhancements.editor
                     : groupTitles.Prepend("All").ToList();
             // Disable grouptitle when is only all
             bool isGroupTitleEnabled = !(groupTitles.Count == 1 && groupTitles[0] == "All");
-            
 
             // Determine the current index based on the selection
             int currentIndex = selectedGroup != null ? groupTitles.IndexOf(selectedGroup) : 0;
@@ -488,6 +490,13 @@ namespace raspichu.inspector_enhancements.editor
                 false,
                 () => AddBlendshapeToPADelete(blendShape)
             );
+
+            menu.AddItem(
+                new GUIContent("Add to PA Recalculate Normals"),
+                false,
+                () => AddBlendshapeToPARecalculateNormals(blendShape)
+            );
+
 #endif
 
 #if VIXEN_EXISTS
@@ -655,6 +664,59 @@ namespace raspichu.inspector_enhancements.editor
             if (!deletePolygons)
             {
                 deletePolygons = Undo.AddComponent<PrefabulousDeletePolygons>(selectedObject);
+            }
+            else
+            {
+                Undo.RecordObject(deletePolygons, "Add Blendshape Binding");
+            }
+
+            // Enable limitToSpecificMeshes on the component
+            deletePolygons.limitToSpecificMeshes = true;
+
+            // Generate a list of renderers if it's not already present
+            if (deletePolygons.renderers == null)
+            {
+                deletePolygons.renderers = new SkinnedMeshRenderer[0];
+            }
+
+            // Add the renderer to the list of renderers if it's not already present
+            if (!deletePolygons.renderers.Contains(renderer))
+            {
+                deletePolygons.renderers = deletePolygons.renderers.Append(renderer).ToArray();
+            }
+
+            // Generate a list of blendshapes if it's not already present
+            if (deletePolygons.blendShapes == null)
+            {
+                deletePolygons.blendShapes = new string[0];
+            }
+
+            // Get the name of the blend shape using the index
+            string blendshapeName = renderer.sharedMesh.GetBlendShapeName(blendShape.Index);
+
+            // Add the blendshape to the list if it's not already present
+            if (!deletePolygons.blendShapes.Contains(blendshapeName))
+            {
+                deletePolygons.blendShapes = deletePolygons
+                    .blendShapes.Append(blendshapeName)
+                    .ToArray();
+            }
+
+            // Set blendshape to 100
+            renderer.SetBlendShapeWeight(blendShape.Index, 100);
+        }
+
+        private static void AddBlendshapeToPARecalculateNormals(BlendShapeInfo blendShape)
+        {
+            // Get or add PrefabulousRecalculateNormals component to the current selected object
+            SkinnedMeshRenderer renderer = blendShape.Renderer;
+            GameObject selectedObject = renderer.gameObject;
+
+            PrefabulousRecalculateNormals deletePolygons =
+                selectedObject.GetComponent<PrefabulousRecalculateNormals>();
+            if (!deletePolygons)
+            {
+                deletePolygons = Undo.AddComponent<PrefabulousRecalculateNormals>(selectedObject);
             }
             else
             {
