@@ -19,7 +19,9 @@ jobs:
     
       - name: Checkout
         uses: actions/checkout@v3
-    
+        with:
+          fetch-depth: 0
+
       - name: get version
         id: version
         uses: notiz-dev/github-action-json-property@7c8cf5cc36eb85d8d287a8086a39dac59628eb31
@@ -31,7 +33,26 @@ jobs:
         run: |
           echo "zipFile=${{ env.packageName }}-${{ steps.version.outputs.prop }}".zip >> $GITHUB_ENV
           echo "unityPackage=${{ env.packageName }}-${{ steps.version.outputs.prop }}.unitypackage" >> $GITHUB_ENV
-        
+
+      - name: Add changelog URL to package.json
+        run: |
+          jq --arg url "https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.prop }}" \
+             '. + {changelogUrl: $url}' "${{ env.packageName }}/package.json" > tmp.json && mv tmp.json "${{ env.packageName }}/package.json"
+
+      - name: Generate changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          FORMAT="- [[%h](https://github.com/${{ github.repository }}/commit/%H)]: %s"
+          if [ -z "$PREV_TAG" ]; then
+            LOG=$(git log --pretty=format:"$FORMAT")
+          else
+            LOG=$(git log --pretty=format:"$FORMAT" "$PREV_TAG"..HEAD)
+          fi
+          echo "changelog<<EOF" >> $GITHUB_ENV
+          echo "## Changes" >> $GITHUB_ENV
+          echo "$LOG" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
       - name: Create Zip
         uses: thedoctor0/zip-release@09336613be18a8208dfa66bd57efafd9e2685657
         with:
@@ -52,7 +73,13 @@ jobs:
         uses: softprops/action-gh-release@1e07f4398721186383de40550babbdf2b84acfc5
         with:
           tag_name: ${{ steps.version.outputs.prop }}
+          body: ${{ env.changelog }}
           files: |
             ${{ env.zipFile }}
             ${{ env.unityPackage }}
             ${{ env.packageName }}/package.json
+
+      - name: Trigger vpm-listing rebuild
+        env:
+          GH_TOKEN: ${{ secrets.VPM_LISTING_TOKEN }}
+        run: gh workflow run build-listing.yml --repo raspichu/vpm-listing --ref main
